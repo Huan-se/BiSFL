@@ -2,6 +2,8 @@ import ctypes
 import os
 import numpy as np
 import threading
+import torch
+import time
 
 _TEE_INSTANCE = None
 _INIT_LOCK = threading.Lock()
@@ -117,43 +119,49 @@ class TEEAdapter:
     
     def simulate_projection(self, client_id, proj_seed, w_new, w_old, output_dim=1024):
         """
-        [Simulation] 在 Python 中直接计算投影，模拟 TEE 行为。
-        计算公式：Proj = Matrix_Gaussian * (w_new - w_old)
+        [GPU Accelerated Simulation] 使用 PyTorch GPU 加速计算投影。
+        极大地优化了超大模型（如ResNet18）生成随机矩阵的时间。
         """
+        # start = time.time()
         # 1. 计算梯度
         if w_new.dtype != np.float32: w_new = w_new.astype(np.float32)
         if w_old.dtype != np.float32: w_old = w_old.astype(np.float32)
         grad = w_new - w_old
         total_len = grad.size
         
-        # 2. 设置随机数生成器 (保证确定性)
-        # 注意：这里的随机数序列与 C++ 不完全一致，但对于验证算法有效性是足够的（都是高斯分布）
-        rng = np.random.RandomState(proj_seed)
+        # 2. 尝试获取 GPU
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
-        projection = np.zeros(output_dim, dtype=np.float32)
+        # [核心优化] 使用独立的 PyTorch Generator 保证投影的随机种子确定性，
+        # 同时不会污染全局的随机种子（以免影响 Dropout 或数据增强）
+        generator = torch.Generator(device=device)
+        generator.manual_seed(proj_seed)
         
-        # 3. 分块矩阵乘法 (防止大模型 OOM)
-        # 每次处理一部分模型参数 (chunk_size 列)
-        chunk_size = 50000 
+        # 将梯度移至 GPU
+        grad_tensor = torch.from_numpy(grad).to(device)
+        projection = torch.zeros(output_dim, device=device)
         
-        for start_idx in range(0, total_len, chunk_size):
-            end_idx = min(start_idx + chunk_size, total_len)
-            current_chunk_len = end_idx - start_idx
-            
-            # 生成对应的随机矩阵块 (Rows x Current_Cols)
-            # 形状: (output_dim, current_chunk_len)
-            mat_chunk = rng.randn(output_dim, current_chunk_len).astype(np.float32)
-            
-            # 获取梯度块
-            grad_chunk = grad[start_idx:end_idx]
-            
-            # 累加投影结果
-            projection += mat_chunk @ grad_chunk
+        # 3. 分块矩阵乘法 (防止爆显存，每次计算占用约 800MB 显存)
+        chunk_size = 200000 
+        
+        with torch.no_grad():
+            for start_idx in range(0, total_len, chunk_size):
+                end_idx = min(start_idx + chunk_size, total_len)
+                current_chunk_len = end_idx - start_idx
+                
+                # 直接在 GPU 上生成高斯随机矩阵块并做乘法
+                mat_chunk = torch.randn((output_dim, current_chunk_len), generator=generator, device=device)
+                grad_chunk = grad_tensor[start_idx:end_idx]
+                
+                projection += torch.matmul(mat_chunk, grad_chunk)
             
         # 模拟 ranges 返回值 (全范围)
         ranges = np.array([0, total_len], dtype=np.int32)
         
-        return projection, ranges
+        # end = time.time()
+        # print(f"Projection Time: {end - start:.2f}s")
+        # 将结果拉回 CPU 并转为 numpy 继续后续流程
+        return projection.cpu().numpy(), ranges
 
     # --- Original Wrappers (Keep for compatibility) ---
 

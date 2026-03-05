@@ -1,5 +1,6 @@
 import torch.nn as nn
 from torchvision.models import resnet18
+import numpy as np
 
 class ResNet18_CIFAR10(nn.Module):
     def __init__(self, num_classes=10):
@@ -18,3 +19,10 @@ class ResNet18_CIFAR10(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+
+    def get_flat_params(self):
+        """[新增] 供 PoisonLoader 计算梯度使用"""
+        params = []
+        for param in self.parameters():
+            params.append(param.data.view(-1).cpu().numpy())
+        return np.concatenate(params).astype(np.float32)

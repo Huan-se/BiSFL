@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 class LeNet5(nn.Module):
     def __init__(self, num_classes=10):
@@ -23,3 +24,10 @@ class LeNet5(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+
+    def get_flat_params(self):
+        """[新增] 供 PoisonLoader 计算梯度使用"""
+        params = []
+        for param in self.parameters():
+            params.append(param.data.view(-1).cpu().numpy())
+        return np.concatenate(params).astype(np.float32)

@@ -3,6 +3,7 @@ import torch.nn as nn
 import copy
 import random
 import gc
+import numpy as np
 
 class PoisonLoader:
     def __init__(self, attack_methods=None, attack_params=None):
@@ -35,7 +36,7 @@ class PoisonLoader:
         
         initial_model = model_class().to(device)
         initial_model.load_state_dict(copy.deepcopy(model.state_dict()))
-        initial_flat = initial_model.get_flat_params()
+        initial_flat = initial_model.get_flat_params() # 此时是 numpy array
 
         criterion = nn.CrossEntropyLoss()
         local_epochs = self.attack_params.get("local_epochs", 3)
@@ -57,12 +58,17 @@ class PoisonLoader:
                 if verbose and (batch_idx % log_interval == 0):
                     print(f"    [Client {uid}] Epoch {epoch+1}/{local_epochs} | Batch {batch_idx}/{len(dataloader)} | Loss: {loss.item():.4f}")
 
-        trained_flat = model.get_flat_params()
+        trained_flat = model.get_flat_params() # numpy array
         grad_flat = trained_flat - initial_flat
 
+        # [核心修复]: 将 Numpy 数组转为 GPU 上的 Tensor，以支持后续的 PyTorch 操作
+        grad_flat = torch.from_numpy(grad_flat).to(device)
+        initial_flat_tensor = torch.from_numpy(initial_flat).to(device)
+
+        # 施加梯度层面的攻击 (如缩放、反转)
         grad_flat = self.apply_gradient_poison(grad_flat)
 
-        final_flat = initial_flat + grad_flat
+        final_flat = initial_flat_tensor + grad_flat
         self._load_flat_params_to_model(model, final_flat)
 
         del initial_model
@@ -70,24 +76,27 @@ class PoisonLoader:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        return copy.deepcopy(model.state_dict()), grad_flat
+        return copy.deepcopy(model.state_dict()), grad_flat.cpu().numpy()
 
     def _execute_random_poison(self, model, model_class, device):
         initial_model = model_class().to(device)
         initial_model.load_state_dict(copy.deepcopy(model.state_dict()))
         initial_flat = initial_model.get_flat_params()
+        
+        # [核心修复]
+        initial_flat_tensor = torch.from_numpy(initial_flat).to(device)
 
         noise_std = self.attack_params.get("noise_std", 0.5)
-        grad_flat = torch.randn_like(initial_flat) * noise_std
+        grad_flat = torch.randn_like(initial_flat_tensor) * noise_std
         
         grad_flat = self.apply_gradient_poison(grad_flat)
 
-        final_flat = initial_flat + grad_flat
+        final_flat = initial_flat_tensor + grad_flat
         self._load_flat_params_to_model(model, final_flat)
         
         random_params = copy.deepcopy(model.state_dict())
         del initial_model
-        return random_params, grad_flat
+        return random_params, grad_flat.cpu().numpy()
 
     def apply_data_poison(self, data, target):
         data_out, target_out = data, target
@@ -169,10 +178,15 @@ class PoisonLoader:
         return -inversion_strength * grad_flat
 
     def _load_flat_params_to_model(self, model, flat_params):
+        # 兼容性处理：如果传入的是 Numpy，转成 Tensor
+        if not isinstance(flat_params, torch.Tensor):
+            flat_params = torch.from_numpy(flat_params)
+            
         start_idx = 0
         for param in model.parameters():
             numel = param.numel()
             end_idx = start_idx + numel
             flat_slice = flat_params[start_idx:end_idx]
-            param.data.copy_(flat_slice.view(param.shape))
+            # [修复点] 安全地使用 view 进行重塑，并确保设备匹配
+            param.data.copy_(flat_slice.view(param.shape).to(param.device))
             start_idx = end_idx

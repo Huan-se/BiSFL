@@ -15,7 +15,7 @@ from _utils_.dataloader import load_and_split_dataset
 from _utils_.poison_loader import PoisonLoader
 from _utils_.save_config import save_result_with_config
 
-# 导入我们刚刚编写的模型库
+# 导入模型库
 from model.Lenet5 import LeNet5
 from model.Resnet20 import resnet20
 from model.Resnet18 import ResNet18_CIFAR10
@@ -29,8 +29,8 @@ def parse_args():
     # 基础配置文件
     parser.add_argument('--config', type=str, default='../config/config.yaml', help='Path to base config file')
     
-    # 实验核心变量 (覆盖 YAML)
-    parser.add_argument('--dataset', type=str, choices=['mnist', 'cifar10'], required=True, help='Dataset to use')
+    # [修改点 1]：去除 dataset 的 required=True，使其变为可选或自动推断参数
+    parser.add_argument('--dataset', type=str, choices=['mnist', 'cifar10'], help='Dataset to use (auto-bound to model if omitted)')
     parser.add_argument('--model', type=str, choices=['lenet5', 'resnet20', 'resnet18'], required=True, help='Model architecture')
     
     # 攻击相关
@@ -41,7 +41,7 @@ def parse_args():
     # 防御相关
     parser.add_argument('--defense', type=str, choices=['none', 'ours', 'krum', 'median', 'clustering'], default='none')
     
-    # 其他超参 (可选覆盖)
+    # 其他超参
     parser.add_argument('--rounds', type=int, default=None, help='Number of FL rounds')
     parser.add_argument('--local_epochs', type=int, default=None, help='Local training epochs')
     parser.add_argument('--device', type=str, default='cuda', help='Device (cuda/cpu)')
@@ -49,26 +49,50 @@ def parse_args():
     return parser.parse_args()
 
 def load_config(args):
-    """加载 YAML 并用命令行参数覆盖核心变量"""
+    """加载 YAML 并用命令行参数覆盖核心变量，适配实际的 config.yaml 结构"""
     with open(args.config, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
         
-    # 用 Argparse 覆盖 YAML
+    for sec in ['experiment', 'federated', 'data', 'defense', 'attack']:
+        if sec not in config: config[sec] = {}
+        
+    # [修改点 2]：数据集与模型强绑定逻辑
+    if args.model == 'lenet5':
+        args.dataset = 'mnist'
+    elif args.model in ['resnet20', 'resnet18']:
+        args.dataset = 'cifar10'
+        
+    # 用 Argparse 覆盖 YAML 的 data 域
     config['data']['dataset'] = args.dataset
     config['data']['model'] = args.model
-    config['attack']['attack_methods'] = [args.attack] if args.attack != 'NoAttack' else []
-    config['attack']['poison_ratio'] = args.poison_ratio
-    config['attack']['backdoor_target'] = args.backdoor_target
-    config['defense']['detection_method'] = 'layers_proj' if args.defense == 'ours' else args.defense
     
+    # 覆盖 YAML 的 attack 域
+    if args.attack != 'NoAttack':
+        config['attack']['active_attacks'] = [args.attack]
+        config['attack']['poison_ratio'] = args.poison_ratio
+        
+        if 'params' not in config['attack']: config['attack']['params'] = {}
+        if args.attack == 'backdoor':
+            if 'backdoor' not in config['attack']['params']: config['attack']['params']['backdoor'] = {}
+            config['attack']['params']['backdoor']['backdoor_target'] = args.backdoor_target
+    else:
+        config['attack']['active_attacks'] = []
+        config['attack']['poison_ratio'] = 0.0
+
+    # 覆盖 YAML 的 defense 域
+    config['defense']['method'] = 'layers_proj_detect' if args.defense == 'ours' else args.defense
+    
+    # 覆盖 YAML 的 federated 域
     if args.rounds is not None:
-        config['training']['global_rounds'] = args.rounds
+        config['federated']['comm_rounds'] = args.rounds
     if args.local_epochs is not None:
-        config['training']['local_epochs'] = args.local_epochs
+        config['federated']['local_epochs'] = args.local_epochs
+    
+    config['poison_ratio'] = config['attack']['poison_ratio']
+    config['if_noniid'] = config['data'].get('if_noniid', False)
     
     return config
 
-# 模型分发字典
 MODEL_REGISTRY = {
     'lenet5': LeNet5,
     'resnet20': resnet20,
@@ -88,62 +112,68 @@ def main():
     os.makedirs(results_dir, exist_ok=True)
     log_file = os.path.join(results_dir, "detection_log.csv")
     
-    # 保存本次实验的确切配置，方便复现
-    save_result_with_config(config, os.path.join(results_dir, "run_config.yaml"))
+    with open(os.path.join(results_dir, "run_config.yaml"), 'w') as f:
+        yaml.dump(config, f)
 
     print(f"\n{'='*50}")
     print(f"🚀 Starting Experiment: {exp_name}")
     print(f"{'='*50}")
 
     device_str = args.device if torch.cuda.is_available() else "cpu"
-    num_clients = config['clients']['num_clients']
-    batch_size = config['training']['batch_size']
-    global_rounds = config['training']['global_rounds']
+    num_clients = config['federated'].get('total_clients', 20)
+    batch_size = config['federated'].get('batch_size', 64)
+    global_rounds = config['federated'].get('comm_rounds', 100)
+    seed = config['experiment'].get('seed', 42)
     
-    # 1. 准备数据
     print("\n[1] Loading Data...")
     client_dataloaders, test_loader = load_and_split_dataset(
         dataset_name=args.dataset,
         num_clients=num_clients,
         batch_size=batch_size,
-        if_noniid=config['clients'].get('if_noniid', False),
-        alpha=config['clients'].get('alpha', 0.1),
+        if_noniid=config['data'].get('if_noniid', False),
+        alpha=config['data'].get('alpha', 0.5),
         data_dir="./data"
     )
 
-    # 2. 初始化攻击加载器 (如果有)
     poison_loader = None
     malicious_cids = []
-    if args.attack != 'NoAttack' and args.poison_ratio > 0:
-        num_attackers = int(num_clients * args.poison_ratio)
+    active_attacks = config['attack'].get('active_attacks', [])
+    poison_ratio = config['attack'].get('poison_ratio', 0.0)
+    
+    if len(active_attacks) > 0 and poison_ratio > 0:
+        num_attackers = int(num_clients * poison_ratio)
         malicious_cids = np.random.choice(num_clients, num_attackers, replace=False).tolist()
-        print(f"\n[!] Attack Enabled: {args.attack} | Attackers: {len(malicious_cids)}/{num_clients}")
+        print(f"\n[!] Attack Enabled: {active_attacks} | Attackers: {len(malicious_cids)}/{num_clients}")
         
-        poison_loader = PoisonLoader(
-            attack_methods=[args.attack],
-            attack_params=config['attack'],
-            malicious_clients=malicious_cids,
-            dataset_name=args.dataset
-        )
+        try:
+            poison_loader = PoisonLoader(
+                attack_methods=active_attacks,
+                attack_params=config['attack'].get('params', {}),
+                dataset_name=args.dataset
+            )
+        except TypeError:
+            poison_loader = PoisonLoader(
+                attack_methods=active_attacks,
+                attack_params=config['attack'].get('params', {})
+            )
 
-    # 3. 实例化模型类引用
+    # [修改点 3]：由于数据集已经强绑定，此处可以直接以原本的固定通道实例化模型
     model_class = MODEL_REGISTRY[args.model]
 
-    # 4. 初始化 Server
     print("\n[2] Initializing Server...")
     server = Server(
         model_class=model_class,
         test_dataloader=test_loader,
         device_str=device_str,
-        detection_method=config['defense']['detection_method'],
+        detection_method=config['defense'].get('method', 'none'),
         defense_config=config.get('defense', {}),
-        seed=config['env'].get('seed', 42),
-        verbose=True,
+        seed=seed,
+        verbose=config['experiment'].get('verbose', False),
         log_file_path=log_file,
-        malicious_clients=malicious_cids
+        malicious_clients=malicious_cids,
+        poison_ratio=poison_ratio
     )
 
-    # 5. 初始化 Clients
     print("\n[3] Initializing Clients...")
     clients = []
     for i in range(num_clients):
@@ -151,63 +181,54 @@ def main():
             client_id=i,
             train_loader=client_dataloaders[i],
             model_class=model_class,
-            poison_loader=poison_loader,
+            poison_loader=poison_loader if i in malicious_cids else None,
             device_str=device_str,
-            verbose=(i == 0) # 仅打印客户端0的训练日志以防刷屏
+            verbose=(i == 0) 
         )
-        # 注入本地训练超参
-        client.learning_rate = config['training'].get('learning_rate', 0.1)
-        client.local_epochs = config['training'].get('local_epochs', 1)
+        client.learning_rate = config['federated'].get('lr', 0.005)
+        client.local_epochs = config['federated'].get('local_epochs', 3)
         clients.append(client)
 
-    # 6. 开始联邦训练循环
     print("\n[4] Starting Federated Learning Loop...")
     
-    # 记录评估指标用于画图
     history = {'acc': [], 'loss': [], 'asr': []}
     
     for round_num in range(1, global_rounds + 1):
         print(f"\n--- Global Round {round_num}/{global_rounds} ---")
         t_round_start = time.time()
         
-        # 6.1 Server 下发模型
         global_params, _ = server.get_global_params_and_proj()
         for client in clients:
             client.receive_model(global_params)
             
-        # 6.2 Client 本地训练 & 模拟提取特征
         client_features = []
         client_data_sizes = []
         active_ids = []
         
         for client in clients:
             client.phase1_local_train()
-            # proj_seed 保持与轮数相关，确保所有端一致
-            proj_seed = int(config['env'].get('seed', 42) + round_num) 
+            proj_seed = int(seed + round_num) 
             feat, d_size = client.phase2_tee_process(proj_seed)
             
             client_features.append(feat)
             client_data_sizes.append(d_size)
             active_ids.append(client.client_id)
             
-        # 6.3 Server 计算权重 (执行防御检测)
         server.calculate_weights(
             client_id_list=active_ids,
             client_features_dict_list=client_features,
             client_data_sizes=client_data_sizes,
-            current_round=round_num
+            current_round=round_num,
+            client_objects=clients
         )
         
-        # 6.4 Server 明文聚合
         server.secure_aggregation(clients, active_ids, round_num)
         
-        # 6.5 全局评估
         acc, loss = server.evaluate()
         history['acc'].append(acc)
         history['loss'].append(loss)
         print(f"  [Evaluate] Main Task Acc: {acc:.2f}% | Loss: {loss:.4f}")
         
-        # 如果是目标攻击，评估 ASR (Attack Success Rate)
         if poison_loader and args.attack in ['backdoor', 'label_flip']:
             asr = server.evaluate_asr(test_loader, poison_loader)
             history['asr'].append(asr)
@@ -215,11 +236,28 @@ def main():
             
         print(f"  [Time] Round {round_num} completed in {time.time() - t_round_start:.2f}s")
 
-    # 7. 保存实验结果
-    res_file = os.path.join(results_dir, "metrics.yaml")
-    with open(res_file, 'w') as f:
-        yaml.dump(history, f)
-    print(f"\n✅ Experiment finished! Results saved to: {results_dir}")
+    print("\n[5] Saving results and generating plots...")
+    
+    if args.attack == 'NoAttack':
+        mode_name = "pure_training"
+    elif args.defense == 'none':
+        mode_name = "poison_no_detection"
+    else:
+        mode_name = "poison_with_detection"
+        
+    save_result_with_config(
+        save_dir=results_dir,
+        mode_name=mode_name,
+        model_type=args.model,
+        dataset_type=args.dataset,
+        detection_method=config['defense']['method'],
+        config=config,
+        accuracy_history=history['acc'],
+        asr_history=history['asr'] if len(history['asr']) > 0 else None,
+        loss_history=history['loss']
+    )
+    
+    print(f"\n✅ Experiment finished! All data and plots saved to: {results_dir}")
 
 if __name__ == "__main__":
     main()

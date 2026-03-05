@@ -45,7 +45,7 @@ class Client(object):
         self.model.load_state_dict(global_params)
         self.w_old_cache = self._flatten_params(self.model)
 
-    def phase1_local_train(self, epochs=1):
+    def phase1_local_train(self, epochs=None):
         """[Phase 1] 本地训练 (集成 PoisonLoader)"""
         t_start = time.time()
         self.model.train()

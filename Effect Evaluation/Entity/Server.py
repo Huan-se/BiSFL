@@ -10,19 +10,19 @@ from collections import defaultdict
 from Defence.score import ScoreCalculator
 from Defence.kickout import KickoutManager
 from Defence.layers_proj_detect import Layers_Proj_Detector
+from Defence.baseline_method import BaselineDetector # [新增] 导入基线方法
 from _utils_.tee_adapter import get_tee_adapter_singleton
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Server(object):
-    def __init__(self, model_class, test_dataloader, device_str, detection_method="none", defense_config=None, seed=42, verbose=False, log_file_path=None, malicious_clients=None):
+    def __init__(self, model_class, test_dataloader, device_str, detection_method="none", defense_config=None, seed=42, verbose=False, log_file_path=None, malicious_clients=None, poison_ratio=0.0):
         self.device = torch.device(device_str)
         self.global_model = model_class().to(self.device)
         self.test_dataloader = test_dataloader
         self.criterion = nn.CrossEntropyLoss().to(self.device)
         
         self.tee_adapter = get_tee_adapter_singleton()
-        # [移除] 不再需要 ServerAdapter (C++ 聚合核心)
         
         self.detection_method = detection_method
         self.verbose = verbose 
@@ -32,13 +32,21 @@ class Server(object):
         self.defense_config = defense_config or {}
         self.suspect_counters = {} 
         self.global_update_direction = None 
-        self.detection_history = defaultdict(lambda: {'suspect_cnt': 0, 'kicked_cnt': 0, 'events': []})
         
+        # --- 初始化防御模块 ---
         det_params = self.defense_config.get('params', {})
         self.mesas_detector = Layers_Proj_Detector(config=det_params)
-        self.score_calculator = ScoreCalculator() if "score" in detection_method else None
-        self.kickout_manager = KickoutManager() if "kickout" in detection_method else None
         
+        # [新增] 初始化基线方法探测器
+        if self.detection_method in ['krum', 'clustering']:
+            self.baseline_detector = BaselineDetector(
+                method=self.detection_method, 
+                poison_ratio=poison_ratio, 
+                device_str=device_str
+            )
+        else:
+            self.baseline_detector = None
+            
         self.current_round_weights = {}
         self.w_old_global_flat = self._flatten_params(self.global_model)
         
@@ -74,14 +82,17 @@ class Server(object):
         self.w_old_global_flat = self._flatten_params(self.global_model)
         return copy.deepcopy(self.global_model.state_dict()), None
 
-    def calculate_weights(self, client_id_list, client_features_dict_list, client_data_sizes, current_round=0):
-        client_projections = {cid: feat for cid, feat in zip(client_id_list, client_features_dict_list)}
+    # [修改] 增加 client_objects 参数，用于直接提取明文梯度
+    def calculate_weights(self, client_id_list, client_features_dict_list, client_data_sizes, current_round=0, client_objects=None):
         self._update_global_direction_feature(current_round)
         weights = {}
-        if any(k in self.detection_method for k in ["mesas", "projected", "layers_proj"]):
+        
+        # 1. 我们的方法 (OURS: 特征投影 + 聚类检测)
+        if any(k in self.detection_method for k in ["mesas", "projected", "layers_proj", "ours"]):
             if self.verbose: 
                 print(f"  [Server] Executing {self.detection_method} detection (Round {current_round})...")
             
+            client_projections = {cid: feat for cid, feat in zip(client_id_list, client_features_dict_list)}
             raw_weights, logs, global_stats = self.mesas_detector.detect(
                 client_projections, self.global_update_direction, self.suspect_counters, verbose=self.verbose
             )
@@ -91,8 +102,23 @@ class Server(object):
             
             total_score = sum(raw_weights.values())
             weights = {cid: s / total_score for cid, s in raw_weights.items()} if total_score > 0 else {cid: 0.0 for cid in raw_weights}
+            
+        # 2. [新增] 基线方法 (Krum / Clustering)
+        elif self.detection_method in ['krum', 'clustering'] and self.baseline_detector:
+            if self.verbose:
+                print(f"  [Server] Executing Baseline {self.detection_method.upper()} detection (Round {current_round})...")
+            
+            # 提取明文原始梯度供基线算法使用
+            client_grads = {c.client_id: c.get_plaintext_gradient() for c in client_objects if c.client_id in client_id_list}
+            weights, logs, global_stats = self.baseline_detector.detect(client_grads, verbose=self.verbose)
+            
+            if self.log_file_path:
+                self._write_detection_log(current_round, logs, weights, global_stats)
+        
+        # 3. 未开启检测 (No Defense / Median 因为属于聚合规则所以这里的权重全是1/N)
         else:
             weights = {cid: 1.0/len(client_id_list) for cid in client_id_list}
+            
         self.current_round_weights = weights
         return weights
 
@@ -117,29 +143,42 @@ class Server(object):
                     for scope in scopes:
                         for metric in metrics_list:
                             key_base = f"{scope}_{metric}"
-                            val = info.get(key_base, 0)
-                            median = global_stats.get(f"{key_base}_median", 0)
-                            thresh = global_stats.get(f"{key_base}_threshold", 0)
-                            
-                            row.append(f"{val:.4f}")
-                            row.append(f"{median:.4f}")
-                            row.append(f"{thresh:.4f}")
+                            row.append(f"{info.get(key_base, 0):.4f}")
+                            row.append(f"{global_stats.get(f'{key_base}_median', 0):.4f}")
+                            row.append(f"{global_stats.get(f'{key_base}_threshold', 0):.4f}")
                     
                     writer.writerow(row)
         except Exception: pass
 
     def secure_aggregation(self, client_objects, active_ids, round_num):
-        """
-        [修改] 替换为明文加权聚合，省去复杂的 TEE 掩码和分片过程
-        """
         t_start_total = time.time()
-        
-        if self.verbose:
-            print(f"\n[Server] >>> STARTING PLAINTEXT AGGREGATION (ROUND {round_num}) <<<")
-        
-        weights_map = self.current_round_weights
         sorted_active_ids = sorted(active_ids) 
         
+        # [特判] Coordinate-wise Median 聚合逻辑
+        if self.detection_method == 'median':
+            if self.verbose:
+                print(f"\n[Server] >>> STARTING MEDIAN AGGREGATION (ROUND {round_num}) <<<")
+            
+            grads_list = []
+            for client in client_objects:
+                if client.client_id in sorted_active_ids:
+                    grads_list.append(torch.from_numpy(client.get_plaintext_gradient()).to(self.device))
+            
+            if len(grads_list) > 0:
+                stacked_grads = torch.stack(grads_list) # (N, D)
+                # 计算特征维度中位数
+                median_grad, _ = torch.median(stacked_grads, dim=0) 
+                self._apply_global_update(median_grad.cpu().numpy())
+                
+                if self.verbose:
+                    print(f"  [Success] Median Aggregation Completed.")
+            return
+
+        # 其他所有方法 (OURS, Krum, Clustering, None) 的标准加权聚合逻辑
+        if self.verbose:
+            print(f"\n[Server] >>> STARTING WEIGHTED AGGREGATION (ROUND {round_num}) <<<")
+            
+        weights_map = self.current_round_weights
         global_update_flat = None
         valid_clients_count = 0
 
@@ -147,37 +186,21 @@ class Server(object):
             if client.client_id not in sorted_active_ids: continue
             
             w = weights_map.get(client.client_id, 0.0)
-            if w <= 1e-9: 
-                # 被防御机制剔除或权重极低，不参与聚合
-                continue
+            if w <= 1e-9: continue
             
-            # 直接获取 Client 的明文梯度
             client_grad = client.get_plaintext_gradient()
-            
             if global_update_flat is None:
                 global_update_flat = np.zeros_like(client_grad, dtype=np.float64)
                 
-            # 加权累加
             global_update_flat += w * client_grad
             valid_clients_count += 1
 
         if global_update_flat is not None and valid_clients_count > 0:
-            try:
-                # 将聚合后的梯度应用到全局模型
-                self._apply_global_update(global_update_flat)
-                if self.verbose:
-                    print(f"  [Success] Aggregation Completed with {valid_clients_count} valid clients.")
-            except Exception as e:
-                print(f"  [Critical Error] Aggregation crashed: {e}")
-                import traceback
-                traceback.print_exc()
+            self._apply_global_update(global_update_flat)
+            if self.verbose:
+                print(f"  [Success] Aggregation Completed with {valid_clients_count} valid clients.")
         else:
             print(f"  [Warning] No valid clients to aggregate in Round {round_num}.")
-
-        t_agg_end = time.time()
-        
-        if self.verbose:
-            print(f"  [Perf] Total Round Time (Plaintext): {t_agg_end - t_start_total:.4f}s")
 
     def _update_global_direction_feature(self, current_round):
         try:
@@ -186,13 +209,11 @@ class Server(object):
                 self.w_old_global_flat = np.zeros_like(w_new_flat)
             proj_seed = int(self.seed + current_round)
             
-            # [修改] 使用 Python 层的模拟投影生成全局方向特征
             projection, _ = self.tee_adapter.simulate_projection(
                 -1, proj_seed, w_new_flat, self.w_old_global_flat
             )
             self.global_update_direction = {'full': projection, 'layers': {}}
-        except Exception as e:
-            print(f"  [Warning] Failed to update global direction feature: {e}")
+        except Exception:
             self.global_update_direction = None
 
     def _apply_global_update(self, update_flat):
@@ -201,7 +222,6 @@ class Server(object):
             for name, param in self.global_model.named_parameters():
                 numel = param.numel()
                 grad_segment = update_flat[idx : idx+numel]
-                # 转换为与参数相同的数据类型并移至对应设备
                 grad_tensor = torch.from_numpy(grad_segment).view(param.shape).to(self.device).type_as(param.data)
                 param.data.add_(grad_tensor)
                 idx += numel
@@ -216,13 +236,10 @@ class Server(object):
         self.global_model.eval()
 
     def evaluate(self):
-        # 1. 评估前先校准 BN (使用测试集的一小部分)
         if self.test_dataloader:
             self.recalibrate_bn(self.test_dataloader, num_batches=20)
-        
-        # 2. 标准 eval
+            
         self.global_model.eval()
-        
         test_loss, correct, total = 0, 0, 0
         with torch.no_grad():
             for inputs, targets in self.test_dataloader:
@@ -237,28 +254,22 @@ class Server(object):
 
     def evaluate_asr(self, loader, poison_loader):
         self.global_model.eval()
-        
-        correct = 0
-        total = 0
-        
+        correct, total = 0, 0
         original_params = copy.deepcopy(poison_loader.attack_params)
         
         poison_loader.attack_params['backdoor_ratio'] = 1.0  
         poison_loader.attack_params['poison_ratio'] = 1.0    
         
         attack_methods = poison_loader.attack_methods
-        target_class = None
-        filter_fn = None 
+        target_class, filter_fn = None, None 
         
         if "backdoor" in attack_methods:
             target_class = original_params.get("backdoor_target", 0)
             filter_fn = lambda t: t != target_class
-            
         elif "label_flip" in attack_methods:
             target_class = original_params.get("target_class", 7)
             source_class = original_params.get("source_class", 1)
             filter_fn = lambda t: t == source_class
-            
         else:
             if "target_class" in original_params:
                 target_class = original_params["target_class"]
@@ -274,7 +285,6 @@ class Server(object):
         with torch.no_grad():
             for data, target in loader:
                 data, target = data.to(self.device), target.to(self.device)
-                
                 indices = torch.where(filter_fn(target))[0]
                 if len(indices) == 0: continue
                 
@@ -293,6 +303,5 @@ class Server(object):
                 correct += predicted.eq(target_poisoned).sum().item()
         
         poison_loader.attack_params = original_params
-        
         if total == 0: return 0.0
         return 100. * correct / total

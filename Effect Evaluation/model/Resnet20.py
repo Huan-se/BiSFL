@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -57,6 +58,13 @@ class ResNet_CIFAR(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out
+
+    def get_flat_params(self):
+        """[新增] 供 PoisonLoader 计算梯度使用"""
+        params = []
+        for param in self.parameters():
+            params.append(param.data.view(-1).cpu().numpy())
+        return np.concatenate(params).astype(np.float32)
 
 def resnet20(num_classes=10):
     """构建用于 CIFAR-10 的 ResNet-20 模型"""
