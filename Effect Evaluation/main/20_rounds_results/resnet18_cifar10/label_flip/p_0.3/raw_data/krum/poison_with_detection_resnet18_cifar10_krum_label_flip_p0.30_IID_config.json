@@ -1,0 +1,166 @@
+{
+    "timestamp": "2026-03-06 15:46:32",
+    "config": {
+        "experiment": {
+            "seed": 42,
+            "save_dir": "results",
+            "thread_count": 20,
+            "use_multiprocessing": true,
+            "device": "cuda",
+            "modes": "all",
+            "verbose": false,
+            "log_interval": 100
+        },
+        "federated": {
+            "comm_rounds": 20,
+            "total_clients": 20,
+            "active_clients": 20,
+            "local_epochs": 3,
+            "batch_size": 64,
+            "lr": 0.005
+        },
+        "data": {
+            "dataset": "cifar10",
+            "model": "resnet18",
+            "if_noniid": false,
+            "alpha": 0.5
+        },
+        "defense": {
+            "method": "krum",
+            "projection_dim": 1024,
+            "target_layers": [
+                "fc.weight"
+            ],
+            "params": {
+                "clustering_method": "kmeans",
+                "dist_threshold_multiplier": 3.5,
+                "score_decay_rate": 2.0,
+                "l2_threshold_multiplier": 4,
+                "var_threshold_multiplier": 4,
+                "base_good_score": 1.0,
+                "suspect_score": 0.01,
+                "max_bonus": 100.0,
+                "strike_threshold": 33,
+                "dbscan_eps": 0.5,
+                "dbscan_min_samples": 2
+            }
+        },
+        "attack": {
+            "poison_ratio": 0.3,
+            "active_attacks": [
+                "label_flip"
+            ],
+            "params": {
+                "random_poison": {
+                    "noise_std": 0.5
+                },
+                "label_flip": {
+                    "source_class": 5,
+                    "target_class": 7,
+                    "scale_update": true,
+                    "scale_factor": 2.0
+                },
+                "backdoor": {
+                    "backdoor_ratio": 0.1,
+                    "backdoor_target": 0,
+                    "trigger_size": 3,
+                    "scale_update": true,
+                    "scale_factor": 3.0
+                },
+                "model_compress": {
+                    "compress_ratio": 0.95
+                },
+                "gradient_amplify": {
+                    "amplify_factor": 5.0
+                },
+                "gradient_inversion": {
+                    "inversion_strength": 1.0
+                },
+                "feature_poison": {
+                    "poison_strength": 0.3,
+                    "perturb_dim": 100
+                },
+                "batch_poison": {
+                    "poison_ratio": 0.2,
+                    "batch_noise_std": 0.1
+                },
+                "local_epochs": 3,
+                "backdoor_ratio": 1.0,
+                "poison_ratio": 1.0
+            }
+        },
+        "poison_ratio": 0.3,
+        "if_noniid": false
+    },
+    "results": {
+        "final_accuracy": 60.72,
+        "final_asr": 2.6,
+        "max_accuracy": 62.41
+    },
+    "accuracy_history": [
+        34.72,
+        39.99,
+        44.81,
+        48.37,
+        49.15,
+        49.51,
+        55.05,
+        58.81,
+        55.79,
+        59.05,
+        59.01,
+        57.62,
+        60.12,
+        60.77,
+        61.54,
+        62.03,
+        62.41,
+        61.86,
+        61.46,
+        60.72
+    ],
+    "asr_history": [
+        0.5,
+        2.3,
+        4.9,
+        1.2,
+        1.5,
+        4.8,
+        0.9,
+        0.3,
+        0.9,
+        1.5,
+        2.8,
+        4.1,
+        3.0,
+        1.3,
+        1.1,
+        2.7,
+        1.2,
+        0.9,
+        2.6,
+        2.6
+    ],
+    "loss_history": [
+        1.7093982741802554,
+        1.643720519693592,
+        1.491825308980821,
+        1.409117250502864,
+        1.4213773087610173,
+        1.4392427160770078,
+        1.2686326443394529,
+        1.1588326813299445,
+        1.2538910093186777,
+        1.1725857408740852,
+        1.2564565660078315,
+        1.298423192923582,
+        1.2736428191390219,
+        1.3385470381265954,
+        1.3739859122264235,
+        1.3699429412431354,
+        1.402086914340152,
+        1.4101867796499519,
+        1.5302525562576101,
+        1.5565004016779647
+    ]
+}

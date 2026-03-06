@@ -1,0 +1,166 @@
+{
+    "timestamp": "2026-03-06 15:22:06",
+    "config": {
+        "experiment": {
+            "seed": 42,
+            "save_dir": "results",
+            "thread_count": 20,
+            "use_multiprocessing": true,
+            "device": "cuda",
+            "modes": "all",
+            "verbose": false,
+            "log_interval": 100
+        },
+        "federated": {
+            "comm_rounds": 20,
+            "total_clients": 20,
+            "active_clients": 20,
+            "local_epochs": 3,
+            "batch_size": 64,
+            "lr": 0.005
+        },
+        "data": {
+            "dataset": "cifar10",
+            "model": "resnet20",
+            "if_noniid": false,
+            "alpha": 0.5
+        },
+        "defense": {
+            "method": "layers_proj_detect",
+            "projection_dim": 1024,
+            "target_layers": [
+                "fc.weight"
+            ],
+            "params": {
+                "clustering_method": "kmeans",
+                "dist_threshold_multiplier": 3.5,
+                "score_decay_rate": 2.0,
+                "l2_threshold_multiplier": 4,
+                "var_threshold_multiplier": 4,
+                "base_good_score": 1.0,
+                "suspect_score": 0.01,
+                "max_bonus": 100.0,
+                "strike_threshold": 33,
+                "dbscan_eps": 0.5,
+                "dbscan_min_samples": 2
+            }
+        },
+        "attack": {
+            "poison_ratio": 0.3,
+            "active_attacks": [
+                "label_flip"
+            ],
+            "params": {
+                "random_poison": {
+                    "noise_std": 0.5
+                },
+                "label_flip": {
+                    "source_class": 5,
+                    "target_class": 7,
+                    "scale_update": true,
+                    "scale_factor": 2.0
+                },
+                "backdoor": {
+                    "backdoor_ratio": 0.1,
+                    "backdoor_target": 0,
+                    "trigger_size": 3,
+                    "scale_update": true,
+                    "scale_factor": 3.0
+                },
+                "model_compress": {
+                    "compress_ratio": 0.95
+                },
+                "gradient_amplify": {
+                    "amplify_factor": 5.0
+                },
+                "gradient_inversion": {
+                    "inversion_strength": 1.0
+                },
+                "feature_poison": {
+                    "poison_strength": 0.3,
+                    "perturb_dim": 100
+                },
+                "batch_poison": {
+                    "poison_ratio": 0.2,
+                    "batch_noise_std": 0.1
+                },
+                "local_epochs": 3,
+                "backdoor_ratio": 1.0,
+                "poison_ratio": 1.0
+            }
+        },
+        "poison_ratio": 0.3,
+        "if_noniid": false
+    },
+    "results": {
+        "final_accuracy": 75.7,
+        "final_asr": 0.3,
+        "max_accuracy": 75.76
+    },
+    "accuracy_history": [
+        14.02,
+        42.1,
+        46.41,
+        51.59,
+        56.0,
+        59.25,
+        61.69,
+        63.93,
+        65.29,
+        66.39,
+        67.16,
+        68.7,
+        70.13,
+        71.23,
+        71.54,
+        72.34,
+        73.61,
+        73.94,
+        75.76,
+        75.7
+    ],
+    "asr_history": [
+        0.2,
+        2.2,
+        2.5,
+        1.4,
+        1.6,
+        1.0,
+        0.8,
+        0.8,
+        0.8,
+        0.7,
+        0.6,
+        0.6,
+        0.8,
+        0.6,
+        0.5,
+        0.2,
+        0.5,
+        0.3,
+        0.5,
+        0.3
+    ],
+    "loss_history": [
+        2.289744757398774,
+        1.5440196704260911,
+        1.4452866300751892,
+        1.3257523488394822,
+        1.21751820286618,
+        1.13561685477631,
+        1.068008797078193,
+        1.012428642073764,
+        0.9706494098977198,
+        0.9438684748697884,
+        0.9247010350227356,
+        0.8745795458177977,
+        0.845513460002368,
+        0.8152863126766833,
+        0.7957200211814687,
+        0.7885137705863277,
+        0.7549308900591694,
+        0.7513676255564147,
+        0.7047546641736091,
+        0.6945351249055017
+    ]
+}

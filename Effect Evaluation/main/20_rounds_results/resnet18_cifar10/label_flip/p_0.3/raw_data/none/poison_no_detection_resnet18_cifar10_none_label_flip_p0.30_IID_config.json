@@ -1,0 +1,166 @@
+{
+    "timestamp": "2026-03-06 15:32:10",
+    "config": {
+        "experiment": {
+            "seed": 42,
+            "save_dir": "results",
+            "thread_count": 20,
+            "use_multiprocessing": true,
+            "device": "cuda",
+            "modes": "all",
+            "verbose": false,
+            "log_interval": 100
+        },
+        "federated": {
+            "comm_rounds": 20,
+            "total_clients": 20,
+            "active_clients": 20,
+            "local_epochs": 3,
+            "batch_size": 64,
+            "lr": 0.005
+        },
+        "data": {
+            "dataset": "cifar10",
+            "model": "resnet18",
+            "if_noniid": false,
+            "alpha": 0.5
+        },
+        "defense": {
+            "method": "none",
+            "projection_dim": 1024,
+            "target_layers": [
+                "fc.weight"
+            ],
+            "params": {
+                "clustering_method": "kmeans",
+                "dist_threshold_multiplier": 3.5,
+                "score_decay_rate": 2.0,
+                "l2_threshold_multiplier": 4,
+                "var_threshold_multiplier": 4,
+                "base_good_score": 1.0,
+                "suspect_score": 0.01,
+                "max_bonus": 100.0,
+                "strike_threshold": 33,
+                "dbscan_eps": 0.5,
+                "dbscan_min_samples": 2
+            }
+        },
+        "attack": {
+            "poison_ratio": 0.3,
+            "active_attacks": [
+                "label_flip"
+            ],
+            "params": {
+                "random_poison": {
+                    "noise_std": 0.5
+                },
+                "label_flip": {
+                    "source_class": 5,
+                    "target_class": 7,
+                    "scale_update": true,
+                    "scale_factor": 2.0
+                },
+                "backdoor": {
+                    "backdoor_ratio": 0.1,
+                    "backdoor_target": 0,
+                    "trigger_size": 3,
+                    "scale_update": true,
+                    "scale_factor": 3.0
+                },
+                "model_compress": {
+                    "compress_ratio": 0.95
+                },
+                "gradient_amplify": {
+                    "amplify_factor": 5.0
+                },
+                "gradient_inversion": {
+                    "inversion_strength": 1.0
+                },
+                "feature_poison": {
+                    "poison_strength": 0.3,
+                    "perturb_dim": 100
+                },
+                "batch_poison": {
+                    "poison_ratio": 0.2,
+                    "batch_noise_std": 0.1
+                },
+                "local_epochs": 3,
+                "backdoor_ratio": 1.0,
+                "poison_ratio": 1.0
+            }
+        },
+        "poison_ratio": 0.3,
+        "if_noniid": false
+    },
+    "results": {
+        "final_accuracy": 75.16,
+        "final_asr": 4.2,
+        "max_accuracy": 75.16
+    },
+    "accuracy_history": [
+        32.43,
+        40.96,
+        46.07,
+        49.11,
+        52.17,
+        55.41,
+        57.95,
+        60.85,
+        62.03,
+        64.39,
+        65.73,
+        67.06,
+        68.25,
+        69.31,
+        70.35,
+        71.85,
+        73.11,
+        73.85,
+        74.62,
+        75.16
+    ],
+    "asr_history": [
+        15.5,
+        8.9,
+        7.0,
+        8.6,
+        5.2,
+        7.4,
+        4.3,
+        7.8,
+        3.9,
+        6.9,
+        4.8,
+        4.0,
+        4.5,
+        3.6,
+        4.7,
+        3.3,
+        4.7,
+        3.8,
+        3.3,
+        4.2
+    ],
+    "loss_history": [
+        1.903701507592503,
+        1.5916481002976623,
+        1.4686629108235807,
+        1.3929198603086834,
+        1.3036413253108157,
+        1.2396968044812167,
+        1.1776334771627113,
+        1.1015236422985415,
+        1.0686936702909349,
+        1.0142826973637449,
+        0.9768642685081386,
+        0.9443351234061809,
+        0.9136370156384721,
+        0.8815910039068777,
+        0.8619210674792905,
+        0.8238534927368164,
+        0.7862899658046191,
+        0.7707944059673744,
+        0.7538745199577718,
+        0.7312518531763101
+    ]
+}

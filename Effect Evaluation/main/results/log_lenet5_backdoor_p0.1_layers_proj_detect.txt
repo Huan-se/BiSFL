@@ -1,0 +1,37 @@
+
+==================================================
+🚀 Starting Experiment: mnist_lenet5_backdoor_p0.1_layers_proj_detect
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting mnist IID...
+
+[!] Attack Enabled: ['backdoor'] | Attackers: 2/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 2.3022
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 2.2755
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 2.1372
+  [Evaluate] Main Task Acc: 79.99% | Loss: 0.6465
+  [Evaluate] Attack Success Rate (ASR): 0.98%
+  [Time] Round 1 completed in 40.35s
+
+--- Global Round 2/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 0.5091
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 0.4120
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 0.3467
+  [Evaluate] Main Task Acc: 93.14% | Loss: 0.2231
+  [Evaluate] Attack Success Rate (ASR): 0.73%
+  [Time] Round 2 completed in 37.37s
+
+--- Global Round 3/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 0.2529
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 0.1612
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 0.1481

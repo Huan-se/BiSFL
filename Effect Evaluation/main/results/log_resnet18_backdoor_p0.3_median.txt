@@ -1,0 +1,181 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet18_backdoor_p0.3_median
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['backdoor'] | Attackers: 6/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.3286
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 2.0849
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 2.0421
+  [Evaluate] Main Task Acc: 34.03% | Loss: 1.7872
+  [Evaluate] Attack Success Rate (ASR): 12.20%
+  [Time] Round 1 completed in 124.71s
+
+--- Global Round 2/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.7584
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.6250
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.7922
+  [Evaluate] Main Task Acc: 44.22% | Loss: 1.5100
+  [Evaluate] Attack Success Rate (ASR): 7.03%
+  [Time] Round 2 completed in 112.64s
+
+--- Global Round 3/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.7331
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.4188
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.5159
+  [Evaluate] Main Task Acc: 49.21% | Loss: 1.3887
+  [Evaluate] Attack Success Rate (ASR): 12.28%
+  [Time] Round 3 completed in 111.65s
+
+--- Global Round 4/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.2553
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.6277
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.3770
+  [Evaluate] Main Task Acc: 53.35% | Loss: 1.2860
+  [Evaluate] Attack Success Rate (ASR): 20.41%
+  [Time] Round 4 completed in 103.47s
+
+--- Global Round 5/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.3693
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.4920
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.2965
+  [Evaluate] Main Task Acc: 56.22% | Loss: 1.2198
+  [Evaluate] Attack Success Rate (ASR): 32.99%
+  [Time] Round 5 completed in 86.13s
+
+--- Global Round 6/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.1032
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.1603
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.2581
+  [Evaluate] Main Task Acc: 58.35% | Loss: 1.1596
+  [Evaluate] Attack Success Rate (ASR): 49.48%
+  [Time] Round 6 completed in 88.69s
+
+--- Global Round 7/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.8347
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.1373
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.9518
+  [Evaluate] Main Task Acc: 61.24% | Loss: 1.0947
+  [Evaluate] Attack Success Rate (ASR): 61.64%
+  [Time] Round 7 completed in 94.92s
+
+--- Global Round 8/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.8911
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.1260
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.0662
+  [Evaluate] Main Task Acc: 62.96% | Loss: 1.0435
+  [Evaluate] Attack Success Rate (ASR): 68.80%
+  [Time] Round 8 completed in 82.95s
+
+--- Global Round 9/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.0151
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.1561
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.8574
+  [Evaluate] Main Task Acc: 65.02% | Loss: 0.9859
+  [Evaluate] Attack Success Rate (ASR): 75.51%
+  [Time] Round 9 completed in 84.38s
+
+--- Global Round 10/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.8453
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.1584
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.0407
+  [Evaluate] Main Task Acc: 66.28% | Loss: 0.9556
+  [Evaluate] Attack Success Rate (ASR): 79.92%
+  [Time] Round 10 completed in 87.54s
+
+--- Global Round 11/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.9427
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.9743
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.0055
+  [Evaluate] Main Task Acc: 67.60% | Loss: 0.9180
+  [Evaluate] Attack Success Rate (ASR): 81.27%
+  [Time] Round 11 completed in 86.95s
+
+--- Global Round 12/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.8965
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.9695
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.6969
+  [Evaluate] Main Task Acc: 68.96% | Loss: 0.8809
+  [Evaluate] Attack Success Rate (ASR): 83.66%
+  [Time] Round 12 completed in 82.69s
+
+--- Global Round 13/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.7083
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.7991
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.6785
+  [Evaluate] Main Task Acc: 69.64% | Loss: 0.8618
+  [Evaluate] Attack Success Rate (ASR): 86.28%
+  [Time] Round 13 completed in 92.64s
+
+--- Global Round 14/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.7839
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.6886
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.8170
+  [Evaluate] Main Task Acc: 70.64% | Loss: 0.8337
+  [Evaluate] Attack Success Rate (ASR): 85.96%
+  [Time] Round 14 completed in 103.31s
+
+--- Global Round 15/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.6416
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.8703
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.5313
+  [Evaluate] Main Task Acc: 71.93% | Loss: 0.8062
+  [Evaluate] Attack Success Rate (ASR): 86.23%
+  [Time] Round 15 completed in 126.40s
+
+--- Global Round 16/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.6414
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.6326
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.6456
+  [Evaluate] Main Task Acc: 72.88% | Loss: 0.7791
+  [Evaluate] Attack Success Rate (ASR): 88.26%
+  [Time] Round 16 completed in 164.31s
+
+--- Global Round 17/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.7048
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.8248
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.7601
+  [Evaluate] Main Task Acc: 73.63% | Loss: 0.7597
+  [Evaluate] Attack Success Rate (ASR): 86.93%
+  [Time] Round 17 completed in 148.52s
+
+--- Global Round 18/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.1222
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.7078
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.7001
+  [Evaluate] Main Task Acc: 74.77% | Loss: 0.7360
+  [Evaluate] Attack Success Rate (ASR): 89.14%
+  [Time] Round 18 completed in 158.02s
+
+--- Global Round 19/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.7682
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.6196
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.5935
+  [Evaluate] Main Task Acc: 75.56% | Loss: 0.7108
+  [Evaluate] Attack Success Rate (ASR): 87.59%
+  [Time] Round 19 completed in 164.49s
+
+--- Global Round 20/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.5948
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.7272
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.6882
+  [Evaluate] Main Task Acc: 76.34% | Loss: 0.6968
+  [Evaluate] Attack Success Rate (ASR): 89.46%
+  [Time] Round 20 completed in 173.90s
+
+[5] Saving results and generating plots...
+[Save] Result saved to poison_with_detection_resnet18_cifar10_median_backdoor_p0.30_IID (.json/.npz/.png)
+
+✅ Experiment finished! All data and plots saved to: results/cifar10_resnet18_backdoor_p0.3_median

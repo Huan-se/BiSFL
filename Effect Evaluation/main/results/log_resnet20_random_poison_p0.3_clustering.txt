@@ -1,0 +1,101 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet20_random_poison_p0.3_clustering
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['random_poison'] | Attackers: 6/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/20 ---
+  [Evaluate] Main Task Acc: 16.43% | Loss: 2.2404
+  [Time] Round 1 completed in 60.43s
+
+--- Global Round 2/20 ---
+  [Evaluate] Main Task Acc: 37.31% | Loss: 1.6728
+  [Time] Round 2 completed in 53.45s
+
+--- Global Round 3/20 ---
+  [Evaluate] Main Task Acc: 12.94% | Loss: 2.3641
+  [Time] Round 3 completed in 54.23s
+
+--- Global Round 4/20 ---
+  [Evaluate] Main Task Acc: 38.95% | Loss: 1.6270
+  [Time] Round 4 completed in 57.09s
+
+--- Global Round 5/20 ---
+  [Evaluate] Main Task Acc: 26.68% | Loss: 1.9575
+  [Time] Round 5 completed in 61.71s
+
+--- Global Round 6/20 ---
+  [Evaluate] Main Task Acc: 41.37% | Loss: 1.5633
+  [Time] Round 6 completed in 60.86s
+
+--- Global Round 7/20 ---
+  [Evaluate] Main Task Acc: 44.39% | Loss: 1.4821
+  [Time] Round 7 completed in 62.19s
+
+--- Global Round 8/20 ---
+  [Evaluate] Main Task Acc: 34.79% | Loss: 1.7378
+  [Time] Round 8 completed in 63.89s
+
+--- Global Round 9/20 ---
+  [Evaluate] Main Task Acc: 47.14% | Loss: 1.4183
+  [Time] Round 9 completed in 62.93s
+
+--- Global Round 10/20 ---
+  [Evaluate] Main Task Acc: 49.90% | Loss: 1.3612
+  [Time] Round 10 completed in 64.25s
+
+--- Global Round 11/20 ---
+  [Evaluate] Main Task Acc: 29.20% | Loss: 1.9761
+  [Time] Round 11 completed in 62.53s
+
+--- Global Round 12/20 ---
+  [Evaluate] Main Task Acc: 47.28% | Loss: 1.4183
+  [Time] Round 12 completed in 64.43s
+
+--- Global Round 13/20 ---
+  [Evaluate] Main Task Acc: 34.23% | Loss: 1.7724
+  [Time] Round 13 completed in 63.55s
+
+--- Global Round 14/20 ---
+  [Evaluate] Main Task Acc: 49.42% | Loss: 1.3730
+  [Time] Round 14 completed in 63.95s
+
+--- Global Round 15/20 ---
+  [Evaluate] Main Task Acc: 43.24% | Loss: 1.5147
+  [Time] Round 15 completed in 62.93s
+
+--- Global Round 16/20 ---
+  [Evaluate] Main Task Acc: 51.85% | Loss: 1.3185
+  [Time] Round 16 completed in 66.19s
+
+--- Global Round 17/20 ---
+  [Evaluate] Main Task Acc: 43.39% | Loss: 1.5945
+  [Time] Round 17 completed in 65.74s
+
+--- Global Round 18/20 ---
+  [Evaluate] Main Task Acc: 53.38% | Loss: 1.2938
+  [Time] Round 18 completed in 63.21s
+
+--- Global Round 19/20 ---
+  [Evaluate] Main Task Acc: 41.63% | Loss: 1.6125
+  [Time] Round 19 completed in 59.32s
+
+--- Global Round 20/20 ---
+  [Evaluate] Main Task Acc: 54.74% | Loss: 1.2567
+  [Time] Round 20 completed in 61.00s
+
+[5] Saving results and generating plots...
+[Save] Result saved to poison_with_detection_resnet20_cifar10_clustering_random_poison_p0.30_IID (.json/.npz/.png)
+
+✅ Experiment finished! All data and plots saved to: results/cifar10_resnet20_random_poison_p0.3_clustering

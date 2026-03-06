@@ -1,0 +1,166 @@
+{
+    "timestamp": "2026-03-06 14:32:58",
+    "config": {
+        "experiment": {
+            "seed": 42,
+            "save_dir": "results",
+            "thread_count": 20,
+            "use_multiprocessing": true,
+            "device": "cuda",
+            "modes": "all",
+            "verbose": false,
+            "log_interval": 100
+        },
+        "federated": {
+            "comm_rounds": 20,
+            "total_clients": 20,
+            "active_clients": 20,
+            "local_epochs": 3,
+            "batch_size": 64,
+            "lr": 0.005
+        },
+        "data": {
+            "dataset": "cifar10",
+            "model": "resnet20",
+            "if_noniid": false,
+            "alpha": 0.5
+        },
+        "defense": {
+            "method": "none",
+            "projection_dim": 1024,
+            "target_layers": [
+                "fc.weight"
+            ],
+            "params": {
+                "clustering_method": "kmeans",
+                "dist_threshold_multiplier": 3.5,
+                "score_decay_rate": 2.0,
+                "l2_threshold_multiplier": 4,
+                "var_threshold_multiplier": 4,
+                "base_good_score": 1.0,
+                "suspect_score": 0.01,
+                "max_bonus": 100.0,
+                "strike_threshold": 33,
+                "dbscan_eps": 0.5,
+                "dbscan_min_samples": 2
+            }
+        },
+        "attack": {
+            "poison_ratio": 0.3,
+            "active_attacks": [
+                "backdoor"
+            ],
+            "params": {
+                "random_poison": {
+                    "noise_std": 0.5
+                },
+                "label_flip": {
+                    "source_class": 5,
+                    "target_class": 7,
+                    "scale_update": true,
+                    "scale_factor": 2.0
+                },
+                "backdoor": {
+                    "backdoor_ratio": 0.1,
+                    "backdoor_target": 0,
+                    "trigger_size": 3,
+                    "scale_update": true,
+                    "scale_factor": 3.0
+                },
+                "model_compress": {
+                    "compress_ratio": 0.95
+                },
+                "gradient_amplify": {
+                    "amplify_factor": 5.0
+                },
+                "gradient_inversion": {
+                    "inversion_strength": 1.0
+                },
+                "feature_poison": {
+                    "poison_strength": 0.3,
+                    "perturb_dim": 100
+                },
+                "batch_poison": {
+                    "poison_ratio": 0.2,
+                    "batch_noise_std": 0.1
+                },
+                "local_epochs": 3,
+                "backdoor_ratio": 1.0,
+                "poison_ratio": 1.0
+            }
+        },
+        "poison_ratio": 0.3,
+        "if_noniid": false
+    },
+    "results": {
+        "final_accuracy": 75.33,
+        "final_asr": 88.64444444444445,
+        "max_accuracy": 75.33
+    },
+    "accuracy_history": [
+        14.22,
+        43.11,
+        47.32,
+        50.78,
+        54.9,
+        57.55,
+        60.37,
+        62.53,
+        63.76,
+        65.42,
+        66.77,
+        68.23,
+        69.37,
+        70.17,
+        71.15,
+        72.35,
+        72.96,
+        73.86,
+        74.69,
+        75.33
+    ],
+    "asr_history": [
+        0.9666666666666667,
+        7.2555555555555555,
+        13.28888888888889,
+        19.533333333333335,
+        28.477777777777778,
+        34.01111111111111,
+        34.544444444444444,
+        42.577777777777776,
+        46.05555555555556,
+        53.855555555555554,
+        55.01111111111111,
+        61.3,
+        65.14444444444445,
+        75.18888888888888,
+        75.56666666666666,
+        82.88888888888889,
+        85.95555555555555,
+        87.8,
+        87.6,
+        88.64444444444445
+    ],
+    "loss_history": [
+        2.4192534247531166,
+        1.5275231192383585,
+        1.4158513983593712,
+        1.3367215530781806,
+        1.2360010660147365,
+        1.167835866348653,
+        1.0999926072132737,
+        1.0480006872853147,
+        0.9995011076142516,
+        0.9567562635940842,
+        0.9234342092200171,
+        0.8861248583733281,
+        0.8530076908159859,
+        0.8294607355624815,
+        0.8083413688442375,
+        0.7758618962915638,
+        0.759335345859769,
+        0.7313979192625119,
+        0.7148415966878964,
+        0.6963152681724935
+    ]
+}

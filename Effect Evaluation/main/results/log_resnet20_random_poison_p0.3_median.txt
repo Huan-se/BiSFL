@@ -1,0 +1,161 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet20_random_poison_p0.3_median
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['random_poison'] | Attackers: 6/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.3513
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.8388
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.8517
+  [Evaluate] Main Task Acc: 22.27% | Loss: 2.1294
+  [Time] Round 1 completed in 55.51s
+
+--- Global Round 2/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.8265
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.8487
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.6898
+  [Evaluate] Main Task Acc: 43.28% | Loss: 1.5326
+  [Time] Round 2 completed in 54.88s
+
+--- Global Round 3/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.7505
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.6147
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.3486
+  [Evaluate] Main Task Acc: 47.07% | Loss: 1.4127
+  [Time] Round 3 completed in 59.24s
+
+--- Global Round 4/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.4991
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.4430
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.4280
+  [Evaluate] Main Task Acc: 50.87% | Loss: 1.3255
+  [Time] Round 4 completed in 63.98s
+
+--- Global Round 5/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.2643
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.2302
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.3315
+  [Evaluate] Main Task Acc: 55.49% | Loss: 1.2223
+  [Time] Round 5 completed in 63.92s
+
+--- Global Round 6/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.1668
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.2210
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.1487
+  [Evaluate] Main Task Acc: 57.43% | Loss: 1.1592
+  [Time] Round 6 completed in 64.21s
+
+--- Global Round 7/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.0819
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.2215
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.2822
+  [Evaluate] Main Task Acc: 59.74% | Loss: 1.1013
+  [Time] Round 7 completed in 64.22s
+
+--- Global Round 8/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.0042
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.0765
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.2080
+  [Evaluate] Main Task Acc: 62.33% | Loss: 1.0348
+  [Time] Round 8 completed in 63.02s
+
+--- Global Round 9/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.0495
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.9688
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.0968
+  [Evaluate] Main Task Acc: 64.43% | Loss: 0.9974
+  [Time] Round 9 completed in 66.73s
+
+--- Global Round 10/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.8544
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.8567
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.0715
+  [Evaluate] Main Task Acc: 65.44% | Loss: 0.9642
+  [Time] Round 10 completed in 64.87s
+
+--- Global Round 11/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.7594
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.1563
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.8536
+  [Evaluate] Main Task Acc: 66.35% | Loss: 0.9404
+  [Time] Round 11 completed in 63.77s
+
+--- Global Round 12/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.7786
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.0090
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.8161
+  [Evaluate] Main Task Acc: 67.26% | Loss: 0.9146
+  [Time] Round 12 completed in 64.33s
+
+--- Global Round 13/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.8776
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.1890
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.8414
+  [Evaluate] Main Task Acc: 68.29% | Loss: 0.9000
+  [Time] Round 13 completed in 64.55s
+
+--- Global Round 14/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.9873
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.1322
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.9417
+  [Evaluate] Main Task Acc: 69.43% | Loss: 0.8657
+  [Time] Round 14 completed in 67.13s
+
+--- Global Round 15/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.6742
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.9654
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.9466
+  [Evaluate] Main Task Acc: 70.77% | Loss: 0.8303
+  [Time] Round 15 completed in 67.05s
+
+--- Global Round 16/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.6969
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.8495
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.9185
+  [Evaluate] Main Task Acc: 71.95% | Loss: 0.8112
+  [Time] Round 16 completed in 67.59s
+
+--- Global Round 17/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.5564
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.8392
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.8553
+  [Evaluate] Main Task Acc: 71.74% | Loss: 0.8079
+  [Time] Round 17 completed in 66.44s
+
+--- Global Round 18/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.7724
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.8779
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.8385
+  [Evaluate] Main Task Acc: 73.12% | Loss: 0.7661
+  [Time] Round 18 completed in 61.18s
+
+--- Global Round 19/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.6073
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.7492
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.8967
+  [Evaluate] Main Task Acc: 74.03% | Loss: 0.7510
+  [Time] Round 19 completed in 65.34s
+
+--- Global Round 20/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.6009
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.6322
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.6218
+  [Evaluate] Main Task Acc: 75.02% | Loss: 0.7253
+  [Time] Round 20 completed in 62.26s
+
+[5] Saving results and generating plots...
+[Save] Result saved to poison_with_detection_resnet20_cifar10_median_random_poison_p0.30_IID (.json/.npz/.png)
+
+✅ Experiment finished! All data and plots saved to: results/cifar10_resnet20_random_poison_p0.3_median

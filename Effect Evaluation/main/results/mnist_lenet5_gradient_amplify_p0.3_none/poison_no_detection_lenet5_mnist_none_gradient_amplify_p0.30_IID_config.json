@@ -1,0 +1,143 @@
+{
+    "timestamp": "2026-03-06 16:07:36",
+    "config": {
+        "experiment": {
+            "seed": 42,
+            "save_dir": "results",
+            "thread_count": 20,
+            "use_multiprocessing": true,
+            "device": "cuda",
+            "modes": "all",
+            "verbose": false,
+            "log_interval": 100
+        },
+        "federated": {
+            "comm_rounds": 20,
+            "total_clients": 20,
+            "active_clients": 20,
+            "local_epochs": 3,
+            "batch_size": 64,
+            "lr": 0.005
+        },
+        "data": {
+            "dataset": "mnist",
+            "model": "lenet5",
+            "if_noniid": false,
+            "alpha": 0.5
+        },
+        "defense": {
+            "method": "none",
+            "projection_dim": 1024,
+            "target_layers": [
+                "fc.weight"
+            ],
+            "params": {
+                "clustering_method": "kmeans",
+                "dist_threshold_multiplier": 3.5,
+                "score_decay_rate": 2.0,
+                "l2_threshold_multiplier": 4,
+                "var_threshold_multiplier": 4,
+                "base_good_score": 1.0,
+                "suspect_score": 0.01,
+                "max_bonus": 100.0,
+                "strike_threshold": 33,
+                "dbscan_eps": 0.5,
+                "dbscan_min_samples": 2
+            }
+        },
+        "attack": {
+            "poison_ratio": 0.3,
+            "active_attacks": [
+                "gradient_amplify"
+            ],
+            "params": {
+                "random_poison": {
+                    "noise_std": 0.5
+                },
+                "label_flip": {
+                    "source_class": 5,
+                    "target_class": 7,
+                    "scale_update": true,
+                    "scale_factor": 2.0
+                },
+                "backdoor": {
+                    "backdoor_ratio": 0.1,
+                    "backdoor_target": 0,
+                    "trigger_size": 3,
+                    "scale_update": true,
+                    "scale_factor": 3.0
+                },
+                "model_compress": {
+                    "compress_ratio": 0.95
+                },
+                "gradient_amplify": {
+                    "amplify_factor": 5.0
+                },
+                "gradient_inversion": {
+                    "inversion_strength": 1.0
+                },
+                "feature_poison": {
+                    "poison_strength": 0.3,
+                    "perturb_dim": 100
+                },
+                "batch_poison": {
+                    "poison_ratio": 0.2,
+                    "batch_noise_std": 0.1
+                },
+                "local_epochs": 3
+            }
+        },
+        "poison_ratio": 0.3,
+        "if_noniid": false
+    },
+    "results": {
+        "final_accuracy": 85.34,
+        "final_asr": 0.0,
+        "max_accuracy": 94.41
+    },
+    "accuracy_history": [
+        53.91,
+        53.69,
+        83.28,
+        86.02,
+        89.64,
+        92.25,
+        94.41,
+        91.95,
+        93.54,
+        90.83,
+        90.7,
+        87.93,
+        85.47,
+        84.01,
+        82.39,
+        84.24,
+        82.19,
+        81.65,
+        82.46,
+        85.34
+    ],
+    "asr_history": [],
+    "loss_history": [
+        8.715387066708335,
+        1.5715222464332097,
+        1.631919474918631,
+        0.8465267118019394,
+        0.8645758576856195,
+        0.3762801659258106,
+        0.31478015186347635,
+        0.24486094010593015,
+        0.2583288678404274,
+        0.30767877131134647,
+        0.3318446570465082,
+        0.4845722670419307,
+        0.5312994928393937,
+        0.7500047298926341,
+        0.6565147279938565,
+        0.7396730667428125,
+        0.7461753764861747,
+        0.9505028901975366,
+        0.6379435928184775,
+        0.5940480477447752
+    ]
+}

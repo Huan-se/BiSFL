@@ -1,0 +1,166 @@
+{
+    "timestamp": "2026-03-06 13:58:46",
+    "config": {
+        "experiment": {
+            "seed": 42,
+            "save_dir": "results",
+            "thread_count": 20,
+            "use_multiprocessing": true,
+            "device": "cuda",
+            "modes": "all",
+            "verbose": false,
+            "log_interval": 100
+        },
+        "federated": {
+            "comm_rounds": 20,
+            "total_clients": 20,
+            "active_clients": 20,
+            "local_epochs": 3,
+            "batch_size": 64,
+            "lr": 0.005
+        },
+        "data": {
+            "dataset": "mnist",
+            "model": "lenet5",
+            "if_noniid": false,
+            "alpha": 0.5
+        },
+        "defense": {
+            "method": "none",
+            "projection_dim": 1024,
+            "target_layers": [
+                "fc.weight"
+            ],
+            "params": {
+                "clustering_method": "kmeans",
+                "dist_threshold_multiplier": 3.5,
+                "score_decay_rate": 2.0,
+                "l2_threshold_multiplier": 4,
+                "var_threshold_multiplier": 4,
+                "base_good_score": 1.0,
+                "suspect_score": 0.01,
+                "max_bonus": 100.0,
+                "strike_threshold": 33,
+                "dbscan_eps": 0.5,
+                "dbscan_min_samples": 2
+            }
+        },
+        "attack": {
+            "poison_ratio": 0.3,
+            "active_attacks": [
+                "backdoor"
+            ],
+            "params": {
+                "random_poison": {
+                    "noise_std": 0.5
+                },
+                "label_flip": {
+                    "source_class": 5,
+                    "target_class": 7,
+                    "scale_update": true,
+                    "scale_factor": 2.0
+                },
+                "backdoor": {
+                    "backdoor_ratio": 0.1,
+                    "backdoor_target": 0,
+                    "trigger_size": 3,
+                    "scale_update": true,
+                    "scale_factor": 3.0
+                },
+                "model_compress": {
+                    "compress_ratio": 0.95
+                },
+                "gradient_amplify": {
+                    "amplify_factor": 5.0
+                },
+                "gradient_inversion": {
+                    "inversion_strength": 1.0
+                },
+                "feature_poison": {
+                    "poison_strength": 0.3,
+                    "perturb_dim": 100
+                },
+                "batch_poison": {
+                    "poison_ratio": 0.2,
+                    "batch_noise_std": 0.1
+                },
+                "local_epochs": 3,
+                "backdoor_ratio": 1.0,
+                "poison_ratio": 1.0
+            }
+        },
+        "poison_ratio": 0.3,
+        "if_noniid": false
+    },
+    "results": {
+        "final_accuracy": 98.76,
+        "final_asr": 95.43237250554324,
+        "max_accuracy": 98.76
+    },
+    "accuracy_history": [
+        86.47,
+        94.35,
+        96.11,
+        96.89,
+        97.5,
+        97.8,
+        98.06,
+        98.07,
+        98.25,
+        98.29,
+        98.45,
+        98.47,
+        98.59,
+        98.62,
+        98.67,
+        98.66,
+        98.67,
+        98.74,
+        98.75,
+        98.76
+    ],
+    "asr_history": [
+        1.0864745011086474,
+        1.06430155210643,
+        1.1751662971175165,
+        2.893569844789357,
+        6.9733924611973395,
+        20.92017738359202,
+        37.91574279379157,
+        49.645232815964526,
+        61.651884700665185,
+        70.46563192904657,
+        77.13968957871397,
+        82.28381374722838,
+        84.34589800443459,
+        88.25942350332595,
+        90.54323725055433,
+        92.1840354767184,
+        93.38137472283813,
+        93.70288248337029,
+        95.08869179600887,
+        95.43237250554324
+    ],
+    "loss_history": [
+        0.4654894504177419,
+        0.1925949995181983,
+        0.12590488526805105,
+        0.09693753902499765,
+        0.0796769710509637,
+        0.06968350427540584,
+        0.06222160420891876,
+        0.05728812306980113,
+        0.05448523255693579,
+        0.050698434789421896,
+        0.048107179981815525,
+        0.04439809428759308,
+        0.04257780439807971,
+        0.04161172439664738,
+        0.03977552661266991,
+        0.03921986159787858,
+        0.038309893956788466,
+        0.03680377946230819,
+        0.03643159752663209,
+        0.03582154698445185
+    ]
+}

@@ -1,0 +1,166 @@
+{
+    "timestamp": "2026-03-06 13:59:52",
+    "config": {
+        "experiment": {
+            "seed": 42,
+            "save_dir": "results",
+            "thread_count": 20,
+            "use_multiprocessing": true,
+            "device": "cuda",
+            "modes": "all",
+            "verbose": false,
+            "log_interval": 100
+        },
+        "federated": {
+            "comm_rounds": 20,
+            "total_clients": 20,
+            "active_clients": 20,
+            "local_epochs": 3,
+            "batch_size": 64,
+            "lr": 0.005
+        },
+        "data": {
+            "dataset": "mnist",
+            "model": "lenet5",
+            "if_noniid": false,
+            "alpha": 0.5
+        },
+        "defense": {
+            "method": "layers_proj_detect",
+            "projection_dim": 1024,
+            "target_layers": [
+                "fc.weight"
+            ],
+            "params": {
+                "clustering_method": "kmeans",
+                "dist_threshold_multiplier": 3.5,
+                "score_decay_rate": 2.0,
+                "l2_threshold_multiplier": 4,
+                "var_threshold_multiplier": 4,
+                "base_good_score": 1.0,
+                "suspect_score": 0.01,
+                "max_bonus": 100.0,
+                "strike_threshold": 33,
+                "dbscan_eps": 0.5,
+                "dbscan_min_samples": 2
+            }
+        },
+        "attack": {
+            "poison_ratio": 0.3,
+            "active_attacks": [
+                "backdoor"
+            ],
+            "params": {
+                "random_poison": {
+                    "noise_std": 0.5
+                },
+                "label_flip": {
+                    "source_class": 5,
+                    "target_class": 7,
+                    "scale_update": true,
+                    "scale_factor": 2.0
+                },
+                "backdoor": {
+                    "backdoor_ratio": 0.1,
+                    "backdoor_target": 0,
+                    "trigger_size": 3,
+                    "scale_update": true,
+                    "scale_factor": 3.0
+                },
+                "model_compress": {
+                    "compress_ratio": 0.95
+                },
+                "gradient_amplify": {
+                    "amplify_factor": 5.0
+                },
+                "gradient_inversion": {
+                    "inversion_strength": 1.0
+                },
+                "feature_poison": {
+                    "poison_strength": 0.3,
+                    "perturb_dim": 100
+                },
+                "batch_poison": {
+                    "poison_ratio": 0.2,
+                    "batch_noise_std": 0.1
+                },
+                "local_epochs": 3,
+                "backdoor_ratio": 1.0,
+                "poison_ratio": 1.0
+            }
+        },
+        "poison_ratio": 0.3,
+        "if_noniid": false
+    },
+    "results": {
+        "final_accuracy": 98.77,
+        "final_asr": 0.19955654101995565,
+        "max_accuracy": 98.77
+    },
+    "accuracy_history": [
+        74.27,
+        92.79,
+        95.33,
+        96.46,
+        97.29,
+        97.58,
+        97.76,
+        98.04,
+        98.08,
+        98.33,
+        98.32,
+        98.46,
+        98.51,
+        98.55,
+        98.63,
+        98.59,
+        98.75,
+        98.69,
+        98.77,
+        98.77
+    ],
+    "asr_history": [
+        2.0953436807095343,
+        0.7317073170731707,
+        0.5764966740576497,
+        0.376940133037694,
+        0.28824833702882485,
+        0.2549889135254989,
+        0.29933481152993346,
+        0.31042128603104213,
+        0.2771618625277162,
+        0.24390243902439024,
+        0.31042128603104213,
+        0.2660753880266075,
+        0.19955654101995565,
+        0.2660753880266075,
+        0.188470066518847,
+        0.24390243902439024,
+        0.188470066518847,
+        0.19955654101995565,
+        0.19955654101995565,
+        0.19955654101995565
+    ],
+    "loss_history": [
+        0.7541726454149319,
+        0.24443717781878724,
+        0.14851019199041626,
+        0.11208508619478656,
+        0.08747825903311089,
+        0.07571845850907266,
+        0.06719431746603709,
+        0.060981984844481384,
+        0.05852891532615818,
+        0.05263667814013595,
+        0.04999729588663182,
+        0.04905660149316772,
+        0.046009387608943214,
+        0.046704263179717716,
+        0.04352464000738662,
+        0.04462737447276963,
+        0.040973515021655256,
+        0.040949421359752554,
+        0.04038010930318844,
+        0.04026730262373775
+    ]
+}

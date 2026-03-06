@@ -1,0 +1,143 @@
+{
+    "timestamp": "2026-03-06 15:55:31",
+    "config": {
+        "experiment": {
+            "seed": 42,
+            "save_dir": "results",
+            "thread_count": 20,
+            "use_multiprocessing": true,
+            "device": "cuda",
+            "modes": "all",
+            "verbose": false,
+            "log_interval": 100
+        },
+        "federated": {
+            "comm_rounds": 20,
+            "total_clients": 20,
+            "active_clients": 20,
+            "local_epochs": 3,
+            "batch_size": 64,
+            "lr": 0.005
+        },
+        "data": {
+            "dataset": "cifar10",
+            "model": "resnet20",
+            "if_noniid": false,
+            "alpha": 0.5
+        },
+        "defense": {
+            "method": "layers_proj_detect",
+            "projection_dim": 1024,
+            "target_layers": [
+                "fc.weight"
+            ],
+            "params": {
+                "clustering_method": "kmeans",
+                "dist_threshold_multiplier": 3.5,
+                "score_decay_rate": 2.0,
+                "l2_threshold_multiplier": 4,
+                "var_threshold_multiplier": 4,
+                "base_good_score": 1.0,
+                "suspect_score": 0.01,
+                "max_bonus": 100.0,
+                "strike_threshold": 33,
+                "dbscan_eps": 0.5,
+                "dbscan_min_samples": 2
+            }
+        },
+        "attack": {
+            "poison_ratio": 0.3,
+            "active_attacks": [
+                "random_poison"
+            ],
+            "params": {
+                "random_poison": {
+                    "noise_std": 0.5
+                },
+                "label_flip": {
+                    "source_class": 5,
+                    "target_class": 7,
+                    "scale_update": true,
+                    "scale_factor": 2.0
+                },
+                "backdoor": {
+                    "backdoor_ratio": 0.1,
+                    "backdoor_target": 0,
+                    "trigger_size": 3,
+                    "scale_update": true,
+                    "scale_factor": 3.0
+                },
+                "model_compress": {
+                    "compress_ratio": 0.95
+                },
+                "gradient_amplify": {
+                    "amplify_factor": 5.0
+                },
+                "gradient_inversion": {
+                    "inversion_strength": 1.0
+                },
+                "feature_poison": {
+                    "poison_strength": 0.3,
+                    "perturb_dim": 100
+                },
+                "batch_poison": {
+                    "poison_ratio": 0.2,
+                    "batch_noise_std": 0.1
+                },
+                "local_epochs": 3
+            }
+        },
+        "poison_ratio": 0.3,
+        "if_noniid": false
+    },
+    "results": {
+        "final_accuracy": 73.42,
+        "final_asr": 0.0,
+        "max_accuracy": 73.42
+    },
+    "accuracy_history": [
+        11.14,
+        39.68,
+        45.5,
+        50.96,
+        54.68,
+        58.31,
+        59.23,
+        61.42,
+        63.64,
+        64.43,
+        65.92,
+        67.09,
+        68.04,
+        69.1,
+        68.9,
+        70.58,
+        71.05,
+        72.41,
+        73.19,
+        73.42
+    ],
+    "asr_history": [],
+    "loss_history": [
+        2.676275624504572,
+        1.6163965840882892,
+        1.4736017290549943,
+        1.3473735685589947,
+        1.2551973786535142,
+        1.1556668681434439,
+        1.1222324816486504,
+        1.062909376017655,
+        1.0228168209896813,
+        1.0108646667456325,
+        0.9679209122174903,
+        0.9316604559934591,
+        0.9113774563692794,
+        0.8846730061724216,
+        0.8796648503858832,
+        0.844965433018117,
+        0.8310357166241996,
+        0.7991092914267431,
+        0.7770637794385983,
+        0.7729918322985685
+    ]
+}

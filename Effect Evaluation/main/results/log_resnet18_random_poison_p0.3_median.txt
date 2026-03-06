@@ -1,0 +1,53 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet18_random_poison_p0.3_median
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['random_poison'] | Attackers: 6/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/20 ---
+Traceback (most recent call last):
+  File "/home/xd/sjh/exp/Effect Evaluation/main/main.py", line 245, in <module>
+    main()
+    ~~~~^^
+  File "/home/xd/sjh/exp/Effect Evaluation/main/main.py", line 186, in main
+    client.phase1_local_train()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/xd/sjh/exp/Effect Evaluation/Entity/Client.py", line 83, in phase1_local_train
+    loss.backward()
+    ~~~~~~~~~~~~~^^
+  File "/home/xd/miniconda3/envs/model/lib/python3.13/site-packages/torch/_tensor.py", line 631, in backward
+    torch.autograd.backward(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        self, gradient, retain_graph, create_graph, inputs=inputs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/xd/miniconda3/envs/model/lib/python3.13/site-packages/torch/autograd/__init__.py", line 365, in backward
+    _engine_run_backward(
+    ~~~~~~~~~~~~~~~~~~~~^
+        tensors,
+        ^^^^^^^^
+    ...<5 lines>...
+        accumulate_grad=True,
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/xd/miniconda3/envs/model/lib/python3.13/site-packages/torch/autograd/graph.py", line 865, in _engine_run_backward
+    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        t_outputs, *args, **kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )  # Calls into the C++ engine to run the backward pass
+    ^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 20.00 MiB. GPU 0 has a total capacity of 15.47 GiB of which 3.69 MiB is free. Process 684612 has 1.27 GiB memory in use. Process 684916 has 546.00 MiB memory in use. Process 685302 has 566.00 MiB memory in use. Process 685659 has 546.00 MiB memory in use. Process 686505 has 2.42 GiB memory in use. Process 686864 has 3.40 GiB memory in use. Process 690308 has 4.64 GiB memory in use. Including non-PyTorch memory, this process has 2.05 GiB memory in use. Of the allocated memory 1.66 GiB is allocated by PyTorch, and 62.25 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

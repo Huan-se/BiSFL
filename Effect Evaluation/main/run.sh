@@ -4,16 +4,16 @@
 # PPFL-TEE 攻防实验矩阵 (安全并发版)
 # ==========================================
 
-MAX_JOBS=4
+MAX_JOBS=6
 
 MODELS=("lenet5" "resnet20" "resnet18")
-POISON_RATIOS=(0.1 0.2 0.3 0.4)
+POISON_RATIOS=(0.1 0.2 0.4)
 DEFENSES=("none" "layers_proj_detect" "krum" "clustering" "median")
 
 TARGETED_ATTACKS=("backdoor" "label_flip")
 UNTARGETED_ATTACKS=("random_poison" "gradient_amplify")
 
-ROUNDS=5
+ROUNDS=20
 
 mkdir -p ./results
 

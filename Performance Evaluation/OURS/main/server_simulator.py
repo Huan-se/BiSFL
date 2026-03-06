@@ -309,7 +309,7 @@ if __name__ == "__main__":
     # 实例化 Server 模拟器
     # 您可以在这里修改端口、客户端数量、参数维度等
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_clients", type=int, default=40)
+    parser.add_argument("--num_clients", type=int, default=100)
     parser.add_argument("--param_size", type=int, default=1000000)
     parser.add_argument("--port", type=int, default=8888)
     parser.add_argument("--drop_rate", type=float, default=0.1)

@@ -1,0 +1,54 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet18_gradient_amplify_p0.3_median
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['gradient_amplify'] | Attackers: 6/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+Traceback (most recent call last):
+  File "/home/xd/sjh/exp/Effect Evaluation/main/main.py", line 245, in <module>
+    main()
+    ~~~~^^
+  File "/home/xd/sjh/exp/Effect Evaluation/main/main.py", line 154, in main
+    client = Client(
+        client_id=i,
+    ...<4 lines>...
+        verbose=(i == 0)
+    )
+  File "/home/xd/sjh/exp/Effect Evaluation/Entity/Client.py", line 22, in __init__
+    self.model = model_class().to(self.device)
+                 ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/xd/miniconda3/envs/model/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1385, in to
+    return self._apply(convert)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/xd/miniconda3/envs/model/lib/python3.13/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+    ~~~~~~~~~~~~~^^^^
+  File "/home/xd/miniconda3/envs/model/lib/python3.13/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+    ~~~~~~~~~~~~~^^^^
+  File "/home/xd/miniconda3/envs/model/lib/python3.13/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+    ~~~~~~~~~~~~~^^^^
+  [Previous line repeated 1 more time]
+  File "/home/xd/miniconda3/envs/model/lib/python3.13/site-packages/torch/nn/modules/module.py", line 964, in _apply
+    param_applied = fn(param)
+  File "/home/xd/miniconda3/envs/model/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1371, in convert
+    return t.to(
+           ~~~~^
+        device,
+        ^^^^^^^
+        dtype if t.is_floating_point() or t.is_complex() else None,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        non_blocking,
+        ^^^^^^^^^^^^^
+    )
+    ^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 20.00 MiB. GPU 0 has a total capacity of 15.47 GiB of which 7.69 MiB is free. Process 696447 has 1.20 GiB memory in use. Process 697376 has 530.00 MiB memory in use. Process 697704 has 530.00 MiB memory in use. Process 697878 has 530.00 MiB memory in use. Process 699137 has 2.66 GiB memory in use. Process 699139 has 4.04 GiB memory in use. Process 706327 has 4.89 GiB memory in use. Including non-PyTorch memory, this process has 1.05 GiB memory in use. Of the allocated memory 774.91 MiB is allocated by PyTorch, and 45.09 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

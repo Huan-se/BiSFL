@@ -1,0 +1,48 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet18_random_poison_p0.3_krum
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['random_poison'] | Attackers: 6/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.3370
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.9542
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.8792
+  [Evaluate] Main Task Acc: 33.96% | Loss: 1.7583
+  [Time] Round 1 completed in 86.73s
+
+--- Global Round 2/20 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.5784
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.5053
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.6650
+Traceback (most recent call last):
+  File "/home/xd/sjh/exp/Effect Evaluation/main/main.py", line 245, in <module>
+    main()
+    ~~~~^^
+  File "/home/xd/sjh/exp/Effect Evaluation/main/main.py", line 199, in main
+    server.calculate_weights(
+    ~~~~~~~~~~~~~~~~~~~~~~~~^
+        client_id_list=active_ids,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        client_objects=clients
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/xd/sjh/exp/Effect Evaluation/Entity/Server.py", line 112, in calculate_weights
+    weights, logs, global_stats = self.baseline_detector.detect(client_grads, verbose=self.verbose)
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/xd/sjh/exp/Effect Evaluation/Defence/baseline_method.py", line 33, in detect
+    grads_tensor = torch.stack(grads_list)
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 854.00 MiB. GPU 0 has a total capacity of 15.47 GiB of which 783.69 MiB is free. Process 684612 has 1.27 GiB memory in use. Process 684916 has 546.00 MiB memory in use. Process 685302 has 566.00 MiB memory in use. Process 685659 has 546.00 MiB memory in use. Process 686505 has 2.42 GiB memory in use. Process 686864 has 3.40 GiB memory in use. Including non-PyTorch memory, this process has 3.72 GiB memory in use. Process 690308 has 2.21 GiB memory in use. Of the allocated memory 2.38 GiB is allocated by PyTorch, and 1.01 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

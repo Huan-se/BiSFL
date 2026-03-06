@@ -1,0 +1,166 @@
+{
+    "timestamp": "2026-03-06 13:59:18",
+    "config": {
+        "experiment": {
+            "seed": 42,
+            "save_dir": "results",
+            "thread_count": 20,
+            "use_multiprocessing": true,
+            "device": "cuda",
+            "modes": "all",
+            "verbose": false,
+            "log_interval": 100
+        },
+        "federated": {
+            "comm_rounds": 20,
+            "total_clients": 20,
+            "active_clients": 20,
+            "local_epochs": 3,
+            "batch_size": 64,
+            "lr": 0.005
+        },
+        "data": {
+            "dataset": "mnist",
+            "model": "lenet5",
+            "if_noniid": false,
+            "alpha": 0.5
+        },
+        "defense": {
+            "method": "krum",
+            "projection_dim": 1024,
+            "target_layers": [
+                "fc.weight"
+            ],
+            "params": {
+                "clustering_method": "kmeans",
+                "dist_threshold_multiplier": 3.5,
+                "score_decay_rate": 2.0,
+                "l2_threshold_multiplier": 4,
+                "var_threshold_multiplier": 4,
+                "base_good_score": 1.0,
+                "suspect_score": 0.01,
+                "max_bonus": 100.0,
+                "strike_threshold": 33,
+                "dbscan_eps": 0.5,
+                "dbscan_min_samples": 2
+            }
+        },
+        "attack": {
+            "poison_ratio": 0.3,
+            "active_attacks": [
+                "backdoor"
+            ],
+            "params": {
+                "random_poison": {
+                    "noise_std": 0.5
+                },
+                "label_flip": {
+                    "source_class": 5,
+                    "target_class": 7,
+                    "scale_update": true,
+                    "scale_factor": 2.0
+                },
+                "backdoor": {
+                    "backdoor_ratio": 0.1,
+                    "backdoor_target": 0,
+                    "trigger_size": 3,
+                    "scale_update": true,
+                    "scale_factor": 3.0
+                },
+                "model_compress": {
+                    "compress_ratio": 0.95
+                },
+                "gradient_amplify": {
+                    "amplify_factor": 5.0
+                },
+                "gradient_inversion": {
+                    "inversion_strength": 1.0
+                },
+                "feature_poison": {
+                    "poison_strength": 0.3,
+                    "perturb_dim": 100
+                },
+                "batch_poison": {
+                    "poison_ratio": 0.2,
+                    "batch_noise_std": 0.1
+                },
+                "local_epochs": 3,
+                "backdoor_ratio": 1.0,
+                "poison_ratio": 1.0
+            }
+        },
+        "poison_ratio": 0.3,
+        "if_noniid": false
+    },
+    "results": {
+        "final_accuracy": 96.88,
+        "final_asr": 0.4878048780487805,
+        "max_accuracy": 96.92
+    },
+    "accuracy_history": [
+        82.17,
+        91.07,
+        94.62,
+        95.56,
+        95.58,
+        95.9,
+        96.13,
+        96.55,
+        96.66,
+        96.74,
+        96.73,
+        96.7,
+        96.74,
+        96.79,
+        96.85,
+        96.89,
+        96.92,
+        96.87,
+        96.81,
+        96.88
+    ],
+    "asr_history": [
+        2.827050997782705,
+        0.9977827050997783,
+        0.4878048780487805,
+        0.43237250554323725,
+        0.47671840354767187,
+        0.38802660753880264,
+        0.376940133037694,
+        0.29933481152993346,
+        0.5210643015521065,
+        0.5210643015521065,
+        0.4656319290465632,
+        0.5432372505543237,
+        0.532150776053215,
+        0.4878048780487805,
+        0.4878048780487805,
+        0.4878048780487805,
+        0.47671840354767187,
+        0.47671840354767187,
+        0.4878048780487805,
+        0.4878048780487805
+    ],
+    "loss_history": [
+        0.5602244255663473,
+        0.28215057657489295,
+        0.16385502347581182,
+        0.14333932557072537,
+        0.13566243683895732,
+        0.12512471821583523,
+        0.1277731198705497,
+        0.11962072728047017,
+        0.12321686512043499,
+        0.12243901004740686,
+        0.12411619652634784,
+        0.13077549096741206,
+        0.1321486722896409,
+        0.13193161737687165,
+        0.1334130551435401,
+        0.1320615366281414,
+        0.1332345043687659,
+        0.13550260422046367,
+        0.13545830043051554,
+        0.13726521025731742
+    ]
+}

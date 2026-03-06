@@ -13,7 +13,7 @@ sys.path.append(parent_dir)
 from _utils_.tee_adapter import get_tee_adapter_singleton
 import network_utils as net
 
-sgx_semaphore = threading.Semaphore(100)
+sgx_semaphore = threading.Semaphore(10)
 
 class VirtualClient:
     def __init__(self, server_ip, port, param_size):
