@@ -153,7 +153,7 @@ class TEEAdapter:
         # Share 1: Alpha Seed (Needs Reconstruction)
         # Share 2...N: Beta Seeds (For each online client)
         # Buffer size: 2 + len(u2)
-        max_len = 2 + len(u2_ids)
+        max_len = 2 + len(u1_ids)
         out_buf = np.zeros(max_len, dtype=np.int64)
         
         self.lib.tee_get_vector_shares_dynamic(

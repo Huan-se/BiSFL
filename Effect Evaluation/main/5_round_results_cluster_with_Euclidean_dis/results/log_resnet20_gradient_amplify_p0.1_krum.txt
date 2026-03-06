@@ -1,0 +1,56 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet20_gradient_amplify_p0.1_krum
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['gradient_amplify'] | Attackers: 2/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.3785
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.9454
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 2.0167
+  [Evaluate] Main Task Acc: 14.63% | Loss: 2.4865
+  [Time] Round 1 completed in 75.43s
+
+--- Global Round 2/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.8243
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.6610
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.7627
+  [Evaluate] Main Task Acc: 37.56% | Loss: 1.6914
+  [Time] Round 2 completed in 76.17s
+
+--- Global Round 3/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.5823
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.7116
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.5057
+  [Evaluate] Main Task Acc: 44.28% | Loss: 1.5527
+  [Time] Round 3 completed in 75.10s
+
+--- Global Round 4/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.6081
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.3882
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.3713
+  [Evaluate] Main Task Acc: 46.47% | Loss: 1.4678
+  [Time] Round 4 completed in 72.54s
+
+--- Global Round 5/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.3566
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.3921
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.2016
+  [Evaluate] Main Task Acc: 47.80% | Loss: 1.4849
+  [Time] Round 5 completed in 73.76s
+
+[5] Saving results and generating plots...
+[Save] Result saved to poison_with_detection_resnet20_cifar10_krum_gradient_amplify_p0.10_IID (.json/.npz/.png)
+
+✅ Experiment finished! All data and plots saved to: results/cifar10_resnet20_gradient_amplify_p0.1_krum

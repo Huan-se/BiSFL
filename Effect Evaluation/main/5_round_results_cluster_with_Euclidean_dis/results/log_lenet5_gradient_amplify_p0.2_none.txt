@@ -1,0 +1,56 @@
+
+==================================================
+🚀 Starting Experiment: mnist_lenet5_gradient_amplify_p0.2_none
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting mnist IID...
+
+[!] Attack Enabled: ['gradient_amplify'] | Attackers: 4/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 2.3240
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 2.2693
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 2.1534
+  [Evaluate] Main Task Acc: 70.98% | Loss: 2.3487
+  [Time] Round 1 completed in 45.82s
+
+--- Global Round 2/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 2.4075
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 0.2358
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 0.1991
+  [Evaluate] Main Task Acc: 83.22% | Loss: 0.8432
+  [Time] Round 2 completed in 46.68s
+
+--- Global Round 3/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 0.8785
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 0.2796
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 0.1954
+  [Evaluate] Main Task Acc: 94.16% | Loss: 0.2687
+  [Time] Round 3 completed in 37.10s
+
+--- Global Round 4/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 0.2481
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 0.2718
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 0.1250
+  [Evaluate] Main Task Acc: 96.83% | Loss: 0.1402
+  [Time] Round 4 completed in 38.60s
+
+--- Global Round 5/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 0.2029
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 0.0486
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 0.0565
+  [Evaluate] Main Task Acc: 97.15% | Loss: 0.1023
+  [Time] Round 5 completed in 38.55s
+
+[5] Saving results and generating plots...
+[Save] Result saved to poison_no_detection_lenet5_mnist_none_gradient_amplify_p0.20_IID (.json/.npz/.png)
+
+✅ Experiment finished! All data and plots saved to: results/mnist_lenet5_gradient_amplify_p0.2_none

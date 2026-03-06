@@ -1,0 +1,56 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet18_gradient_amplify_p0.4_median
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['gradient_amplify'] | Attackers: 8/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.3474
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.9006
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.7464
+  [Evaluate] Main Task Acc: 37.13% | Loss: 1.7274
+  [Time] Round 1 completed in 97.59s
+
+--- Global Round 2/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.8388
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.6942
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.4744
+  [Evaluate] Main Task Acc: 46.76% | Loss: 1.4396
+  [Time] Round 2 completed in 81.36s
+
+--- Global Round 3/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.3701
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.5392
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.3598
+  [Evaluate] Main Task Acc: 52.01% | Loss: 1.3188
+  [Time] Round 3 completed in 84.06s
+
+--- Global Round 4/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.9950
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.2361
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.0707
+  [Evaluate] Main Task Acc: 57.14% | Loss: 1.2020
+  [Time] Round 4 completed in 87.27s
+
+--- Global Round 5/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.0194
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.1528
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 0.9788
+  [Evaluate] Main Task Acc: 61.94% | Loss: 1.0687
+  [Time] Round 5 completed in 78.89s
+
+[5] Saving results and generating plots...
+[Save] Result saved to poison_with_detection_resnet18_cifar10_median_gradient_amplify_p0.40_IID (.json/.npz/.png)
+
+✅ Experiment finished! All data and plots saved to: results/cifar10_resnet18_gradient_amplify_p0.4_median

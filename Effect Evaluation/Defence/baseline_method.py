@@ -74,14 +74,16 @@ class BaselineDetector:
         return weights, logs
 
     def _clustering(self, cids, grads_tensor, num_clients):
-        # 1. 基础聚类直接使用原始的 11M 维梯度，为了兼容 sklearn，拉回 CPU
-        grads_cpu = grads_tensor.cpu().numpy()
+        # 1. 将明文梯度进行 L2 归一化。
+        # 这一步极其重要，使得普通的欧氏距离 KMeans 在数学上等效于基于余弦相似度的 KMeans
+        normalized_grads = torch.nn.functional.normalize(grads_tensor, p=2, dim=1)
+        grads_cpu = normalized_grads.cpu().numpy()
         
-        # 强制聚为 2 类 (假设系统中存在良性和恶意两种分布)
+        # 2. 在归一化后的数据上进行聚类 (强制聚为 2 类)
         kmeans = KMeans(n_clusters=2, random_state=42, n_init=10)
         labels = kmeans.fit_predict(grads_cpu)
         
-        # 2. 假设数量较多的簇是良性节点，数量较少的簇是恶意节点
+        # 3. 假设数量较多的簇是良性节点，数量较少的簇是恶意节点
         count_0 = np.sum(labels == 0)
         count_1 = np.sum(labels == 1)
         
@@ -99,7 +101,7 @@ class BaselineDetector:
                 weights[cid] = 0.0
                 logs[cid] = {'status': 'KICK_OUT', 'full_l2': float(labels[i])}
                 
-        # 3. 将良性节点的权重均分
+        # 4. 将良性节点的权重均分
         if len(benign_cids) > 0:
             w = 1.0 / len(benign_cids)
             for cid in benign_cids:

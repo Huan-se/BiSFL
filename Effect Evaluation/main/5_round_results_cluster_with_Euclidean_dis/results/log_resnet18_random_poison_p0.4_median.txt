@@ -1,0 +1,38 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet18_random_poison_p0.4_median
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['random_poison'] | Attackers: 8/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.3782
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.8868
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.8817
+  [Evaluate] Main Task Acc: 34.70% | Loss: 1.7868
+  [Time] Round 1 completed in 62.41s
+
+--- Global Round 2/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.6111
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.8707
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.7325
+Traceback (most recent call last):
+  File "/home/xd/sjh/exp/Effect Evaluation/main/main.py", line 245, in <module>
+    main()
+    ~~~~^^
+  File "/home/xd/sjh/exp/Effect Evaluation/main/main.py", line 207, in main
+    server.secure_aggregation(clients, active_ids, round_num)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/xd/sjh/exp/Effect Evaluation/Entity/Server.py", line 166, in secure_aggregation
+    stacked_grads = torch.stack(grads_list)
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 854.00 MiB. GPU 0 has a total capacity of 15.47 GiB of which 57.00 MiB is free. Process 299481 has 3.39 GiB memory in use. Process 299685 has 4.53 GiB memory in use. Process 300554 has 3.69 GiB memory in use. Including non-PyTorch memory, this process has 3.77 GiB memory in use. Of the allocated memory 2.30 GiB is allocated by PyTorch, and 1.13 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

@@ -1,0 +1,70 @@
+attack:
+  active_attacks:
+  - random_poison
+  params:
+    backdoor:
+      backdoor_ratio: 0.1
+      backdoor_target: 0
+      scale_factor: 3.0
+      scale_update: true
+      trigger_size: 3
+    batch_poison:
+      batch_noise_std: 0.1
+      poison_ratio: 0.2
+    feature_poison:
+      perturb_dim: 100
+      poison_strength: 0.3
+    gradient_amplify:
+      amplify_factor: 5.0
+    gradient_inversion:
+      inversion_strength: 1.0
+    label_flip:
+      scale_factor: 2.0
+      scale_update: true
+      source_class: 5
+      target_class: 7
+    model_compress:
+      compress_ratio: 0.95
+    random_poison:
+      noise_std: 0.5
+  poison_ratio: 0.2
+data:
+  alpha: 0.5
+  dataset: mnist
+  if_noniid: false
+  model: lenet5
+defense:
+  method: median
+  params:
+    base_good_score: 1.0
+    clustering_method: kmeans
+    dbscan_eps: 0.5
+    dbscan_min_samples: 2
+    dist_threshold_multiplier: 3.5
+    l2_threshold_multiplier: 4
+    max_bonus: 100.0
+    score_decay_rate: 2.0
+    strike_threshold: 33
+    suspect_score: 0.01
+    var_threshold_multiplier: 4
+  projection_dim: 1024
+  target_layers:
+  - fc.weight
+experiment:
+  device: cuda
+  log_interval: 100
+  modes: all
+  save_dir: results
+  seed: 42
+  thread_count: 20
+  use_multiprocessing: true
+  verbose: false
+federated:
+  active_clients: 20
+  batch_size: 64
+  comm_rounds: 5
+  local_epochs: 3
+  lr: 0.005
+  total_clients: 20
+if_noniid: false
+poison_ratio: 0.2

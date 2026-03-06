@@ -1,0 +1,56 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet18_random_poison_p0.4_layers_proj_detect
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['random_poison'] | Attackers: 8/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.4879
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 2.0362
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.7857
+  [Evaluate] Main Task Acc: 35.72% | Loss: 1.7466
+  [Time] Round 1 completed in 65.62s
+
+--- Global Round 2/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.7305
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.7396
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.6232
+  [Evaluate] Main Task Acc: 44.08% | Loss: 1.5010
+  [Time] Round 2 completed in 67.58s
+
+--- Global Round 3/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.4666
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.5849
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.5574
+  [Evaluate] Main Task Acc: 49.24% | Loss: 1.3813
+  [Time] Round 3 completed in 61.52s
+
+--- Global Round 4/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.4071
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.6443
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.5191
+  [Evaluate] Main Task Acc: 52.28% | Loss: 1.3045
+  [Time] Round 4 completed in 62.52s
+
+--- Global Round 5/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.3503
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.0692
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.5753
+  [Evaluate] Main Task Acc: 55.08% | Loss: 1.2453
+  [Time] Round 5 completed in 63.28s
+
+[5] Saving results and generating plots...
+[Save] Result saved to poison_with_detection_resnet18_cifar10_layers_proj_detect_random_poison_p0.40_IID (.json/.npz/.png)
+
+✅ Experiment finished! All data and plots saved to: results/cifar10_resnet18_random_poison_p0.4_layers_proj_detect

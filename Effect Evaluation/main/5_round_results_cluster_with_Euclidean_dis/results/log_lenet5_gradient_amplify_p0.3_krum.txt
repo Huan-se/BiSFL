@@ -1,0 +1,56 @@
+
+==================================================
+🚀 Starting Experiment: mnist_lenet5_gradient_amplify_p0.3_krum
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting mnist IID...
+
+[!] Attack Enabled: ['gradient_amplify'] | Attackers: 6/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 2.3171
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 2.2736
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 1.9312
+  [Evaluate] Main Task Acc: 75.25% | Loss: 0.6929
+  [Time] Round 1 completed in 36.60s
+
+--- Global Round 2/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 0.7070
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 0.5515
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 0.2585
+  [Evaluate] Main Task Acc: 91.71% | Loss: 0.2723
+  [Time] Round 2 completed in 36.49s
+
+--- Global Round 3/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 0.1022
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 0.2666
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 0.1719
+  [Evaluate] Main Task Acc: 93.71% | Loss: 0.2061
+  [Time] Round 3 completed in 36.20s
+
+--- Global Round 4/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 0.1553
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 0.1929
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 0.0886
+  [Evaluate] Main Task Acc: 95.10% | Loss: 0.1556
+  [Time] Round 4 completed in 36.71s
+
+--- Global Round 5/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/47 | Loss: 0.1348
+    [Client 0] Epoch 2/3 | Batch 0/47 | Loss: 0.3601
+    [Client 0] Epoch 3/3 | Batch 0/47 | Loss: 0.0943
+  [Evaluate] Main Task Acc: 95.29% | Loss: 0.1486
+  [Time] Round 5 completed in 36.43s
+
+[5] Saving results and generating plots...
+[Save] Result saved to poison_with_detection_lenet5_mnist_krum_gradient_amplify_p0.30_IID (.json/.npz/.png)
+
+✅ Experiment finished! All data and plots saved to: results/mnist_lenet5_gradient_amplify_p0.3_krum

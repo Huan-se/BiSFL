@@ -1,0 +1,56 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet18_gradient_amplify_p0.2_clustering
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['gradient_amplify'] | Attackers: 4/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.3570
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.9252
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.6901
+  [Evaluate] Main Task Acc: 33.91% | Loss: 1.7998
+  [Time] Round 1 completed in 144.92s
+
+--- Global Round 2/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.9209
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.4828
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.6309
+  [Evaluate] Main Task Acc: 45.58% | Loss: 1.4817
+  [Time] Round 2 completed in 142.49s
+
+--- Global Round 3/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.2103
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.5088
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.3419
+  [Evaluate] Main Task Acc: 50.80% | Loss: 1.3605
+  [Time] Round 3 completed in 142.45s
+
+--- Global Round 4/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 1.7610
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 0.9755
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.2130
+  [Evaluate] Main Task Acc: 55.89% | Loss: 1.2182
+  [Time] Round 4 completed in 140.46s
+
+--- Global Round 5/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 0.9123
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.1916
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.2774
+  [Evaluate] Main Task Acc: 59.94% | Loss: 1.1327
+  [Time] Round 5 completed in 136.70s
+
+[5] Saving results and generating plots...
+[Save] Result saved to poison_with_detection_resnet18_cifar10_clustering_gradient_amplify_p0.20_IID (.json/.npz/.png)
+
+✅ Experiment finished! All data and plots saved to: results/cifar10_resnet18_gradient_amplify_p0.2_clustering

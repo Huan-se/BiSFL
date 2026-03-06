@@ -1,0 +1,41 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet18_random_poison_p0.4_clustering
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['random_poison'] | Attackers: 8/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/5 ---
+  [Evaluate] Main Task Acc: 10.38% | Loss: 3.3244
+  [Time] Round 1 completed in 105.99s
+
+--- Global Round 2/5 ---
+  [Evaluate] Main Task Acc: 9.95% | Loss: 3.6153
+  [Time] Round 2 completed in 105.10s
+
+--- Global Round 3/5 ---
+  [Evaluate] Main Task Acc: 10.17% | Loss: 4.0303
+  [Time] Round 3 completed in 92.03s
+
+--- Global Round 4/5 ---
+  [Evaluate] Main Task Acc: 11.64% | Loss: 3.4392
+  [Time] Round 4 completed in 94.05s
+
+--- Global Round 5/5 ---
+  [Evaluate] Main Task Acc: 15.28% | Loss: 2.8720
+  [Time] Round 5 completed in 95.32s
+
+[5] Saving results and generating plots...
+[Save] Result saved to poison_with_detection_resnet18_cifar10_clustering_random_poison_p0.40_IID (.json/.npz/.png)
+
+✅ Experiment finished! All data and plots saved to: results/cifar10_resnet18_random_poison_p0.4_clustering

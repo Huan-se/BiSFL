@@ -1,0 +1,56 @@
+
+==================================================
+🚀 Starting Experiment: cifar10_resnet18_random_poison_p0.1_none
+==================================================
+
+[1] Loading Data...
+  [Data] Splitting cifar10 IID...
+
+[!] Attack Enabled: ['random_poison'] | Attackers: 2/20
+
+[2] Initializing Server...
+[TEEAdapter] Warning: Could not load TEE library (Lib not found: /home/xd/sjh/exp/Effect Evaluation/lib/libtee_bridge.so). Running in Simulation Mode only.
+
+[3] Initializing Clients...
+
+[4] Starting Federated Learning Loop...
+
+--- Global Round 1/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.4794
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.9334
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.7303
+  [Evaluate] Main Task Acc: 10.75% | Loss: 2.3773
+  [Time] Round 1 completed in 84.19s
+
+--- Global Round 2/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.3384
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.9013
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 2.1517
+  [Evaluate] Main Task Acc: 17.82% | Loss: 2.3591
+  [Time] Round 2 completed in 92.02s
+
+--- Global Round 3/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.0909
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.7796
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.7269
+  [Evaluate] Main Task Acc: 18.55% | Loss: 2.4241
+  [Time] Round 3 completed in 86.73s
+
+--- Global Round 4/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.3301
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.7817
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.6878
+  [Evaluate] Main Task Acc: 25.33% | Loss: 2.2076
+  [Time] Round 4 completed in 87.28s
+
+--- Global Round 5/5 ---
+    [Client 0] Epoch 1/3 | Batch 0/40 | Loss: 2.1492
+    [Client 0] Epoch 2/3 | Batch 0/40 | Loss: 1.9518
+    [Client 0] Epoch 3/3 | Batch 0/40 | Loss: 1.9259
+  [Evaluate] Main Task Acc: 25.51% | Loss: 2.1687
+  [Time] Round 5 completed in 87.81s
+
+[5] Saving results and generating plots...
+[Save] Result saved to poison_no_detection_resnet18_cifar10_none_random_poison_p0.10_IID (.json/.npz/.png)
+
+✅ Experiment finished! All data and plots saved to: results/cifar10_resnet18_random_poison_p0.1_none
