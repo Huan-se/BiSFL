@@ -6,6 +6,7 @@ main/results/
 /Enclave/include/
 results_collection/
 *result*/
+Integrated_Results/
 *.pt
 *.pth
 *.npz
