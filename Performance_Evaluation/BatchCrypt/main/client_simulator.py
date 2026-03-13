@@ -104,5 +104,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_clients", type=int, default=20)
     parser.add_argument("--param_size", type=int, default=1000000)
+    parser.add_argument("--port", type=int, default=8888)
     args = parser.parse_args()
-    run_simulator(port=8888, num_clients=args.num_clients, param_size=args.param_size)
+    run_simulator(port=args.port, num_clients=args.num_clients, param_size=args.param_size)
