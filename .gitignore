@@ -229,3 +229,6 @@ Thumbs.db
 *.pkl
 *.pickle
 *.mat
+
+.txt
+
