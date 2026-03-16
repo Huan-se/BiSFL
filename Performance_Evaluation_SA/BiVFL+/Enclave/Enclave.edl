@@ -1,0 +1,21 @@
+enclave {
+    trusted {
+        /* 稀疏掩码生成：传入 O(log N) 的 active_neighbors */
+        public void ecall_generate_masked_gradient_sparse(
+            uint32_t root_seed, uint32_t global_seed, int client_id,
+            [user_check] const int* active_neighbors, int num_neighbors,
+            float weight, int param_size, [user_check] int64_t* out_masked_gradient);
+
+        /* 零前置通信标量分片：传入 O(log N) 的 dropped_neighbors，本地推导出 share */
+        public void ecall_get_scalar_shares_sparse(
+            uint32_t seed_sss, uint32_t root_seed,
+            [user_check] const int* dropped_neighbors, int num_dropped,
+            int client_id, int threshold, [user_check] uint64_t* out_shares);
+            
+        public void ecall_prepare_gradient(
+            int client_id, int proj_seed, int param_size,
+            [user_check] const float* w_new, 
+            [user_check] const float* w_old_cache, 
+            [user_check] float* out_proj);
+    };
+};

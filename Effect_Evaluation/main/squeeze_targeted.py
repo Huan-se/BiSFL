@@ -24,7 +24,7 @@ DEFENSES = ['none', 'median', 'krum', 'clustering', 'layers_proj_detect']
 # 包含特定 Marker 的精美绘图样式
 DEFENSE_STYLES = {
     'none': {'label': 'No Defense', 'color': '#d62728', 'style': '-', 'lw': 1.5, 'marker': 'v', 'markersize': 8, 'zorder': 2},
-    'layers_proj_detect': {'label': 'OURS', 'color': '#1f77b4', 'style': '-', 'lw': 2.5, 'marker': 'o', 'markersize': 10, 'zorder': 10},
+    'layers_proj_detect': {'label': 'BiVFL', 'color': '#1f77b4', 'style': '-', 'lw': 2.5, 'marker': 'o', 'markersize': 10, 'zorder': 10},
     'krum': {'label': 'Krum', 'color': '#2ca02c', 'style': '-', 'lw': 1.5, 'marker': '^', 'markersize': 8, 'zorder': 3},
     'clustering': {'label': 'Clustering', 'color': '#ff7f0e', 'style': '-', 'lw': 1.5, 'marker': 'x', 'markersize': 8, 'zorder': 4},
     'median': {'label': 'Median', 'color': '#9467bd', 'style': '-', 'lw': 1.5, 'marker': 's', 'markersize': 8, 'zorder': 5}
@@ -143,7 +143,7 @@ def main():
                 ax.set_yticklabels(['0%', '20%', '40%', '60%', '80%', '100%'], fontsize=14)
                 ax.set_ylabel("MAX ASR ", fontsize=24, fontweight='bold')
             
-            ax.tick_params(axis='x', labelsize=14)
+            ax.tick_params(axis='x', labelsize=18)
             
             # 子图描述文字
             model_display = model.split('_')[0].upper()
@@ -160,7 +160,7 @@ def main():
     # 全局悬浮图例 (顶部居中)
     # ==========================================
     fig.legend(lines_for_legend, labels_for_legend, loc='upper center', 
-               ncol=len(lines_for_legend), fontsize=24, 
+               ncol=len(lines_for_legend), prop={'size': 24, 'weight': 'bold'}, 
                bbox_to_anchor=(0.5, 1.0), frameon=False)
 
     # 调整布局

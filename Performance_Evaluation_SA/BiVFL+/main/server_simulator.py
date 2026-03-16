@@ -3,6 +3,7 @@ import os
 import socket
 import time
 import random
+import math
 import numpy as np
 import torch
 import threading
@@ -32,23 +33,19 @@ class ServerSimulator:
         
         print("[Server] 初始化 Server 端环境与检测器...")
         self.server_adapter = ServerAdapter()
-        # 初始化检测器
         self.detector = Layers_Proj_Detector(config={})
         
-        # 全局投影缓存，初始轮次设定为全 0 向量 (假设投影维度为 1024)
         self.global_proj_cache = np.zeros(1024, dtype=np.float32)
         
         self.seed_mask_root = 0x12345678 
         self.seed_global_0 = 0x87654321  
         self.seed_sss = 0x11223344
         
-        # 统计变量
         self.t_init_total = 0
         self.comm_bytes_ratls = 0
 
     def _get_msg_size(self, msg_dict):
         import pickle
-        # 序列化后的字节长度 + 4字节的头部长度
         return len(pickle.dumps(msg_dict)) + 4
 
     def wait_for_clients(self):
@@ -70,31 +67,25 @@ class ServerSimulator:
         print("[Server] 所有客户端物理连接已就绪。")
 
     def perform_ratls_handshake(self):
-        """执行严格的 RA-TLS 协议数据包交换与认证"""
         print("\n[Server] === 开始执行 RA-TLS 双向认证与安全种子协商 ===")
         t_start = time.time()
         active_ids = list(self.client_sockets.keys())
 
-        # 1. 索要 TEE Quote (包含公钥)
         req_quote_msg = {"action": "REQ_RATLS_QUOTE"}
         self._send_to_targets(req_quote_msg, active_ids)
         quotes_results = self._recv_from_targets("RES_RATLS_QUOTE", active_ids)
         
-        # 统计通信量
         self.comm_bytes_ratls += self._get_msg_size(req_quote_msg) * len(active_ids)
         for cid, payload in quotes_results.items():
             self.comm_bytes_ratls += 2 * self._get_msg_size({"action": "RES_RATLS_QUOTE", "data": payload})
 
-        # 2. 模拟 Server 侧并发验证 Quote 签名的 CPU 耗时 (通常为几毫秒)
         time.sleep(0.005 * len(active_ids))
 
-        # 3. Server 使用共享密钥加密种子并下发 (128 Bytes AES 密文负载)
         dummy_cipher_seeds = os.urandom(128) 
         msg_dicts = {cid: {"action": "SYNC_SEEDS", "data": dummy_cipher_seeds} for cid in active_ids}
         self._send_custom_to_targets(msg_dicts, active_ids)
         self._recv_from_targets("RES_SEEDS_ACK", active_ids)
         
-        # 统计通信量
         for cid in active_ids:
             self.comm_bytes_ratls += self._get_msg_size(msg_dicts[cid])
             self.comm_bytes_ratls += self._get_msg_size({"action": "RES_SEEDS_ACK"})
@@ -122,21 +113,35 @@ class ServerSimulator:
             for cid in target_ids: executor.submit(_recv, cid)
         return results
 
+    def _generate_k_regular_graph(self, active_ids):
+        """生成对称的 O(log N) K-正则稀疏环图"""
+        N = len(active_ids)
+        if N <= 1: return {}, 0
+        
+        # 设定 K = O(log N)，确保是偶数以形成无向对称图
+        K_degree = max(4, 2 * int(math.ceil(math.log2(N)))) 
+        if K_degree >= N: K_degree = N - 1 if (N - 1) % 2 == 0 else N - 2
+            
+        neighbors = {i: [] for i in active_ids}
+        for idx, cid in enumerate(active_ids):
+            for d in range(1, (K_degree // 2) + 1):
+                neighbors[cid].append(active_ids[(idx + d) % N])
+                neighbors[cid].append(active_ids[(idx - d) % N])
+        return neighbors, K_degree
+
     def run_simulation_round(self):
         active_ids = list(self.client_sockets.keys())
         active_ids.sort()
         N = len(active_ids)
         
-        # --- 通信量统计累加器 (以 Byte 为单位) ---
         comm_bytes_proj_upload = 0
         comm_bytes_weight_down = 0
-        comm_bytes_cipher_up = 0     # [新增] 掩码模型上传累加器
+        comm_bytes_cipher_up = 0
         comm_bytes_shares_req = 0
         comm_bytes_shares_up = 0
         
         print(f"========== 完整通信与计算性能测试 (维度: {self.param_size}) ==========")
         
-        # --- 准备阶段：下发模型 (此时间不计入您要求的五大核心耗时) ---
         if self.enable_model_broadcast:
             dummy_global_model = np.random.randn(self.param_size).astype(np.float32)
             self._send_to_targets({"action": "SYNC_MODEL", "data": dummy_global_model}, active_ids)
@@ -145,7 +150,6 @@ class ServerSimulator:
         self._recv_from_targets("RES_TRAIN_DONE", active_ids)
 
         if self.enable_projection:
-            # 1. 投影时间
             print("[1/4] 发起请求，客户端生成投影并回传...")
             t_start_proj = time.time()
             self._send_to_targets({"action": "REQ_PROJ"}, active_ids)
@@ -155,7 +159,6 @@ class ServerSimulator:
             for cid, feat in proj_results.items():
                 comm_bytes_proj_upload += self._get_msg_size({"action": "RES_PROJ", "data": feat})
 
-            # 2. Server 异常检测
             print("[2/4] 执行 Server 端防御检测算法...")
             t_start_det = time.time()
             
@@ -203,102 +206,108 @@ class ServerSimulator:
         N_u1 = len(u1_ids)
         N_u2 = len(u2_ids)
 
-        # ==========================================================
-        # 3. 安全加扰时间：下发梯度掩码指令 -> 生成密文与分片 -> 上传完毕
-        # ==========================================================
-        print(f"[3/4] 安全加扰与收集: 期望 {N_u1} 人, 实际存活 {N_u2} 人 (掉线率 {self.drop_rate*100}%)...")
+        # 构建 K-正则稀疏图
+        graph_neighbors, K_degree = self._generate_k_regular_graph(u1_ids)
+        threshold = K_degree // 2 + 1
+
+        print(f"[3/4] 安全加扰与收集: 存活 {N_u2}/{N_u1}, K-正则图度数 K={K_degree}...")
         t_start_mask = time.time()
         
-        msg_dicts = {cid: {"action": "REQ_CIPHER", "u1_ids": u1_ids, "weight": weights_map[cid]} for cid in u2_ids}
+        # 【修改点 1】只下发 O(log N) 的 active_neighbors
+        msg_dicts = {}
+        for cid in u2_ids:
+            active_neighbors = [n for n in graph_neighbors[cid] if n in u2_ids]
+            msg_dicts[cid] = {
+                "action": "REQ_CIPHER", 
+                "active_neighbors": active_neighbors, 
+                "weight": weights_map[cid]
+            }
+            
         self._send_custom_to_targets(msg_dicts, u2_ids)
         for cid in u2_ids:
             comm_bytes_weight_down += self._get_msg_size(msg_dicts[cid])
             
         cipher_results = self._recv_from_targets("RES_CIPHER", u2_ids)
 
-        # [新增统计] 精确统计上传的掩码模型 (O(d) 级别大数据) 的物理字节数
         for cid, cipher_data in cipher_results.items():
             comm_bytes_cipher_up += self._get_msg_size({"action": "RES_CIPHER", "data": cipher_data})
         
-        # 传递 U1 和 U2 给存活的客户端获取掉线恢复分片
-        req_share_msg = {"action": "REQ_SHARES", "u1_ids": u1_ids, "u2_ids": u2_ids}
-        self._send_to_targets(req_share_msg, u2_ids)
+        # 【修改点 2】只下发 O(log N) 的 dropped_neighbors
+        share_msg_dicts = {}
+        for cid in u2_ids:
+            dropped_neighbors = [n for n in graph_neighbors[cid] if n not in u2_ids]
+            share_msg_dicts[cid] = {
+                "action": "REQ_SHARES", 
+                "dropped_neighbors": dropped_neighbors,
+                "threshold": threshold
+            }
+            
+        self._send_custom_to_targets(share_msg_dicts, u2_ids)
         shares_results = self._recv_from_targets("RES_SHARES", u2_ids)
         
-        comm_bytes_shares_req += self._get_msg_size(req_share_msg) * N_u2
-        for cid, shares in shares_results.items():
-            comm_bytes_shares_up += self._get_msg_size({"action": "RES_SHARES", "data": shares})
+        for cid in u2_ids:
+            comm_bytes_shares_req += self._get_msg_size(share_msg_dicts[cid])
+            comm_bytes_shares_up += self._get_msg_size({"action": "RES_SHARES", "data": shares_results[cid]})
         
         t_mask_total = time.time() - t_start_mask
 
         # ==========================================================
-        # 4. 安全聚合时间：Server 根据密文与分片进行聚合消去
+        # 4. 安全聚合时间：Server 根据标量密文分片进行聚合消去
         # ==========================================================
-        print("[4/4] 启动 C++ ServerCore 安全聚合提取明文...")
+        print("[4/4] 启动 C++ ServerCore 安全聚合提取明文 (标量重构)...")
         ciphers_list = [cipher_results[cid] for cid in u2_ids]
         shares_list = [shares_results[cid] for cid in u2_ids]
         
         t_start_agg = time.time()
-        result_int = self.server_adapter.aggregate_and_unmask(
-            self.seed_mask_root, self.seed_global_0, u1_ids, u2_ids, shares_list, ciphers_list
+        # 传递 N 和 K_degree 使得 C++ ServerCore 可以同步重构稀疏拓扑并执行 AES-CTR 掩码消除
+        result_int = self.server_adapter.aggregate_and_unmask_sparse(
+            self.seed_mask_root, self.seed_global_0, u1_ids, u2_ids, shares_list, ciphers_list, N_u1, K_degree
         )
         t_agg_total = time.time() - t_start_agg
         
         # ==========================================================
-        # 通信量计算 (转换为 KB)
+        # 通信量与时间计算
         # ==========================================================
         comm_init_kb = self.comm_bytes_ratls / 1024.0 / N
         comm_proj_detect_kb = (comm_bytes_proj_upload + comm_bytes_weight_down) / 1024.0 / N
-        
-        # [新增] 掩码模型自身上传的大小 (以实际存活节点数 N_u2 计算平均值)
-        comm_cipher_up_kb = comm_bytes_cipher_up / 1024.0 / N_u2 if N_u2 > 0 else 0
-        
-        # 掉线恢复通信量 (Req Shares + Res Shares)
-        comm_recovery_kb = (comm_bytes_shares_req + comm_bytes_shares_up) / 1024.0 / N_u2 if N_u2 > 0 else 0
-        
-        # 总通信量累加
+        comm_cipher_up_kb = comm_bytes_cipher_up / 1024.0 / N_u2
+        comm_recovery_kb = (comm_bytes_shares_req + comm_bytes_shares_up) / 1024.0 / N_u2
         total_comm_kb = comm_init_kb + comm_proj_detect_kb + comm_cipher_up_kb + comm_recovery_kb
 
-        # ==========================================================
-        # 打印全新的通信量与时间报告
-        # ==========================================================
         print("\n============= Communication Report =============")
         print("【通信量评估 (单客户端均值)】")
-        print(f" 1. 系统初始化通信量 : {comm_init_kb:.2f} KB (含完整 Quote 验证与密钥分发)")
-        print(f" 2. 投影检测方案开销 : {comm_proj_detect_kb:.2f} KB (投影上传 + 权重下发)")
-        print(f" 3. 掩码模型上传开销 : {comm_cipher_up_kb:.2f} KB (真实 O(d) 级密文传输)")
-        print(f" 4. 掉线恢复分片传输 : {comm_recovery_kb:.2f} KB (分片请求与收集)")
+        print(f" 1. 系统初始化通信量 : {comm_init_kb:.2f} KB")
+        print(f" 2. 投影检测方案开销 : {comm_proj_detect_kb:.2f} KB (投影+稀疏路由 O(log N))")
+        print(f" 3. 掩码模型上传开销 : {comm_cipher_up_kb:.2f} KB")
+        print(f" 4. 标量分片恢复传输 : {comm_recovery_kb:.2f} KB (通信极小化 O(log N))")
         print(" -----------------------------------------------")
         print(f" 📊 总物理网络开销   : {total_comm_kb:.2f} KB")
         
-        # ==========================================================
-        # 最终时间换算与汇总报告输出
-        # ==========================================================
-        avg_init = self.t_init_total / N
+        avg_init = self.t_init_total / N 
         avg_proj = t_proj_total / N
         avg_mask = t_mask_total / N_u2 if N_u2 > 0 else 0
         total_mask_pipeline = avg_init + avg_mask + t_agg_total
         total_proj_pipeline = avg_proj + t_det_total
 
         print("\n============= Time Report =============")
-        print(f" [配置] 总客户端数: {N} | 参与聚合数: {N_u2} | 参数维度: {self.param_size}")
+        print(f" [配置] 客户端: {N} | 存活: {N_u2} | 维度: {self.param_size} | K度数: {K_degree}")
         print(" -----------------------------------------------")
-        print(f" 1. 平均初始化时间     : {avg_init:.4f} s/client (TEE启动 + RATLS建立)")
-        print(f" 2. 平均投影时间       : {avg_proj:.4f} s/client (参数生成 -> TEE投影 -> 传输)")
-        print(f" 3. Server异常检测时间 : {t_det_total:.4f} s (纯 Server 端加权计算)")
-        print(f" 4. 平均安全加扰时间   : {avg_mask:.4f} s/client (梯度加掩码 -> 分片生成 -> 传输)")
-        print(f" 5. 安全聚合时间       : {t_agg_total:.4f} s (聚合求解明文更新，不含更新模型)")
+        print(f" 1. 平均初始化时间     : {avg_init:.4f} s/client")
+        print(f" 2. 平均投影时间       : {avg_proj:.4f} s/client")
+        print(f" 3. Server异常检测时间 : {t_det_total:.4f} s")
+        print(f" 4. 平均安全加扰时间   : {avg_mask:.4f} s/client")
+        print(f" 5. 标量聚合还原时间   : {t_agg_total:.4f} s")
         print(" ===============================================")
-        print(f" 🚀 总时间 (掩码流程)  : {total_mask_pipeline:.4f} s  (公式: 1 + 4 + 5)")
-        print(f" 🛡️ 投影检测总时间     : {total_proj_pipeline:.4f} s  (公式: 2 + 3)")
+        print(f" 🚀 总时间 (掩码流程)  : {total_mask_pipeline:.4f} s")
+        print(f" 🛡️ 投影检测总时间     : {total_proj_pipeline:.4f} s")
         print("================================================\n")
         
         for sock in self.client_sockets.values(): sock.close()
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_clients", type=int, default=100)
-    parser.add_argument("--param_size", type=int, default=1000000)
+    parser.add_argument("--num_clients", type=int, default=10)
+    parser.add_argument("--param_size", type=int, default=1000)
     parser.add_argument("--port", type=int, default=8887)
     parser.add_argument("--drop_rate", type=float, default=0.1)
     parser.add_argument("--enable_projection", type=bool, default=False)

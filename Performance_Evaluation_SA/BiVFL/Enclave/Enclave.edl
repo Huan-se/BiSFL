@@ -1,0 +1,70 @@
+/* Enclave/Enclave.edl */
+enclave {
+    from "sgx_tstdc.edl" import *;
+    include "sgx_key_exchange.h"
+    include "sgx_tcrypto.h"
+    trusted {
+        public void ecall_set_verbose(int level);
+        // 阶段 1：请求 Enclave 生成密钥对，并导出公钥与 Quote
+        public void ecall_ra_keygen(
+            [out, size=64] uint8_t* out_pub_key, 
+            [out, size=4384] uint8_t* out_quote
+        );
+
+        // 阶段 2：注入 Server 加密后的种子，Enclave 内部解密保存
+        public void ecall_ra_provision_seed(
+            [in, size=64] uint8_t* server_pub_key, 
+            [in, size=128] uint8_t* cipher_payload
+        );
+        /* Phase 2: Prepare Gradient */
+        public void ecall_prepare_gradient(
+            int client_id,
+            [in, string] const char* proj_seed_str,  /* [修改] long -> string */
+            [in, count=model_len] float* w_new,
+            [in, count=model_len] float* w_old,
+            size_t model_len,
+            [in, count=ranges_len] int* ranges,
+            size_t ranges_len,
+            [out, count=out_len] float* output_proj,
+            size_t out_len
+        );
+
+        /* Phase 4: Generate Masked Gradient */
+        public void ecall_generate_masked_gradient_dynamic(
+            [in, string] const char* seed_mask_root_str, /* [修改] */
+            [in, string] const char* seed_global_0_str,  /* [修改] */
+            int client_id,
+            [in, count=active_count] int* active_ids,
+            size_t active_count,
+            [in, string] const char* k_weight_str,       /* [修改] float -> string */
+            size_t model_len,
+            [in, count=ranges_len] int* ranges,
+            size_t ranges_len,
+            [out, count=out_len] long long* output,
+            size_t out_len
+        );
+
+        /* Phase 5: Get Shares */
+        public void ecall_get_vector_shares_dynamic(
+            [in, string] const char* seed_sss_str,       /* [修改] */
+            [in, string] const char* seed_mask_root_str, /* [修改] */
+            [in, count=u1_len] int* u1_ids, size_t u1_len,
+            [in, count=u2_len] int* u2_ids, size_t u2_len,
+            int my_client_id,
+            int threshold,
+            [out, count=out_max_len] long long* output_vector,
+            size_t out_max_len
+        );
+
+        /* Noise Generation */
+        public void ecall_generate_noise_from_seed(
+            [in, string] const char* seed_str,           /* [修改] */
+            size_t len,
+            [out, count=len] long long* output
+        );
+    };
+
+    untrusted {
+        void ocall_print_string([in, string] const char *str);
+    };
+};

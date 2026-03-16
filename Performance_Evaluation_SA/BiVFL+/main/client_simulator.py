@@ -25,7 +25,6 @@ class VirtualClient:
         self.sock = None
         self.w_old_cache = np.zeros(param_size, dtype=np.float32)
         self.w_new_cache = None
-        self.active_ids = []
         
         self.tee_adapter = get_tee_adapter_singleton()
         
@@ -52,70 +51,61 @@ class VirtualClient:
                     self.client_id = msg.get("client_id")
 
                 elif action == "REQ_RATLS_QUOTE":
-                    # 模拟 TEE 内部调用 sgx_ecc256_create_key_pair 并生成 Quote
                     with sgx_semaphore:
-                        time.sleep(0.02) # 硬件生成 Quote 的平均延迟
-                        # 严格模拟 4384 字节的 DCAP Quote 和 64 字节的公钥
+                        time.sleep(0.02) 
                         dummy_pub_key = os.urandom(64)
                         dummy_quote = os.urandom(4384)
-                        
                     net.send_msg(self.sock, {
                         "action": "RES_RATLS_QUOTE",
                         "data": {"pub_key": dummy_pub_key, "quote": dummy_quote}
                     })
 
                 elif action == "SYNC_SEEDS":
-                    # 模拟 TEE 内部接收 Server 密文，并使用私钥 ECDH 解密
                     with sgx_semaphore:
-                        time.sleep(0.002) # 极短的 AES 解密耗时
+                        time.sleep(0.002) 
                     net.send_msg(self.sock, {"action": "RES_SEEDS_ACK"})
                     
                 elif action == "SYNC_MODEL":
-                    # [核心修正 2]：仅执行本地 Mock 训练，不包含任何 TEE 调用
                     self.w_new_cache = np.random.randn(self.param_size).astype(np.float32)
-                    
-                    # 告知 Server 训练完毕，触发下一步
                     net.send_msg(self.sock, {"action": "RES_TRAIN_DONE"})
                     
                 elif action == "REQ_PROJ":
-                    # [修复]：使用信号量保护，排队进入 SGX
                     with sgx_semaphore:
                         output, ranges = self.tee_adapter.prepare_gradient(
                             self.client_id, 12345, self.w_new_cache, self.w_old_cache
                         )
                     self.w_old_cache = self.w_new_cache.copy()
-                    net.send_msg(self.sock, {"action": "RES_PROJ", "data": output})
+                    output_np = np.array(output, dtype=np.float32)
+                    net.send_msg(self.sock, {"action": "RES_PROJ", "data": output_np})
                 
                 elif action == "SKIP_PROJ":
-                    # 直接在 Python 内存中更新缓存，不调用 TEE 投影接口
                     self.w_old_cache = self.w_new_cache.copy()
-                    # 发送确认包给 Server，打破死锁
                     net.send_msg(self.sock, {"action": "RES_SKIP_PROJ"})
                     
                 elif action == "REQ_CIPHER":
-                    # [接收 U1 列表用于生成掩码]
-                    u1_ids = msg.get("u1_ids")
+                    active_neighbors = msg.get("active_neighbors", [])
                     assigned_weight = msg.get("weight", 0.0)
                     
-                    # [修复]：使用信号量保护
                     with sgx_semaphore:
-                        c_grad = self.tee_adapter.generate_masked_gradient_dynamic(
+                        # 调用全新的稀疏掩码生成接口
+                        c_grad = self.tee_adapter.generate_masked_gradient_sparse(
                             self.seed_mask_root, self.seed_global_0, 
-                            self.client_id, u1_ids, 
+                            self.client_id, active_neighbors, 
                             assigned_weight, self.param_size
                         )
-                    net.send_msg(self.sock, {"action": "RES_CIPHER", "data": c_grad})
+                        
+                    c_grad_np = np.array(c_grad, dtype=np.int64)
+                    net.send_msg(self.sock, {"action": "RES_CIPHER", "data": c_grad_np})
                     
                 elif action == "REQ_SHARES":
-                    # [接收 U1 和 U2 列表用于生成恢复多项式]
-                    u1_ids = msg.get("u1_ids")
-                    u2_ids = msg.get("u2_ids")
-                    threshold = len(u1_ids) // 2 + 1
+                    dropped_neighbors = msg.get("dropped_neighbors", [])
+                    threshold = msg.get("threshold", 3)
+                    
                     with sgx_semaphore:
-                        shares = self.tee_adapter.get_vector_shares_dynamic(
+                        # 调用全新的本地标量分享接口（零前置通信，本地推导掉线者分片）
+                        shares = self.tee_adapter.get_scalar_shares_sparse(
                             self.seed_sss, self.seed_mask_root, 
-                            u1_ids, u2_ids, 
-                            self.client_id, threshold
+                            dropped_neighbors, self.client_id, threshold
                         )
                     net.send_msg(self.sock, {"action": "RES_SHARES", "data": shares})
 

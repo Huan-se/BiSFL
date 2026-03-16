@@ -245,7 +245,7 @@ class ServerSimulator:
         # ==========================================================
         comm_r0_kb = self.comm_bytes_round0 / 1024.0 / N
         comm_r1_kb = self.comm_bytes_round1 / 1024.0 / N
-        comm_r2_kb = self.comm_bytes_round2 / 1024.0 / N
+        comm_r2_kb = self.comm_bytes_round2 / 1024.0 / len(u3_ids) if u3_ids else 0
         comm_r4_kb = self.comm_bytes_round4 / 1024.0 / len(u3_ids) if u3_ids else 0
         total_comm_kb = comm_r0_kb + comm_r1_kb + comm_r2_kb + comm_r4_kb
 
@@ -274,7 +274,7 @@ class ServerSimulator:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_clients", type=int, default=100)
+    parser.add_argument("--num_clients", type=int, default=10)
     parser.add_argument("--param_size", type=int, default=1000000)
     parser.add_argument("--port", type=int, default=8888)
     parser.add_argument("--drop_rate", type=float, default=0.1)
