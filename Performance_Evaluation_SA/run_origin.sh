@@ -8,7 +8,7 @@ set -euo pipefail
 
 # 2. 基础环境与目录准备
 ROOT_DIR=$(pwd)
-RESULTS_DIR="benchmark_results"
+RESULTS_DIR="benchmark_results_origin"
 FAILED_LOG="${RESULTS_DIR}/failed_runs.log"
 
 # 全局耗时统计起点
@@ -28,7 +28,7 @@ sudo sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null || true
 sudo sysctl -w net.ipv4.ip_local_port_range="1024 65535" 2>/dev/null || true
 
 # 3. 定义实验参数
-SCHEMES=("BiVFL+" ) #"SecAgg" "SecAgg+" "BiVFL" 
+SCHEMES=("SecAgg" "SecAgg+" "BiVFL" "BatchCrypt" ) #"SecAgg" "SecAgg+" "BiVFL" 
 CLIENT_COUNTS=(10 50 100)
 PARAM_POWERS=(10 15 20)
 CURRENT_PORT=10000

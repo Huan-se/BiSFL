@@ -15,7 +15,7 @@ set -euo pipefail
 
 # ── 基础环境 ──────────────────────────────────────────────────────────────────
 ROOT_DIR=$(pwd)
-RESULTS_DIR="benchmark_results"
+RESULTS_DIR="benchmark_results_pro"
 FAILED_LOG="${RESULTS_DIR}/failed_runs.log"
 START_TIME_ALL=$(date +%s)
 
@@ -31,13 +31,13 @@ sudo sysctl -w net.ipv4.tcp_tw_reuse=1      2>/dev/null || true
 sudo sysctl -w net.ipv4.ip_local_port_range="1024 65535" 2>/dev/null || true
 
 # ── 实验参数定义 ──────────────────────────────────────────────────────────────
-SCHEMES=("BiVFL+" "SecAgg" "SecAgg+" "BiVFL")   # 可追加 "SecAgg" "SecAgg+" "BiVFL" "BatchCrypt"
+SCHEMES=("BiVFL+")   # 可追加 "SecAgg" "SecAgg+" "BiVFL" "BatchCrypt"
 
 # Dropout 率列表（百分比整数，传给 --drop_rate 时除以100）
 DROPOUT_RATES=(0 10 20 30)
 
 # ---- Fig(a): 耗时 vs N，固定 d=2^20 ----
-FIG_A_N_LIST=(10 50 100 200 300 500)
+FIG_A_N_LIST=(200)
 FIG_A_D_POW=20          # 固定参数维度指数
 
 # ---- Fig(b): 耗时 vs d，固定 N=100 ----
