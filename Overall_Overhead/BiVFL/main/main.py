@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import copy
 import random
+import io
 
 # 路径修复
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,6 +24,14 @@ from _utils_.save_config import save_result_with_config, check_result_exists, ge
 from model.Lenet5 import LeNet5
 from model.Resnet20 import resnet20
 from model.Resnet18 import ResNet18_CIFAR10
+
+def get_obj_size_mb(obj):
+    """
+    计算 PyTorch 对象（如 tensor、dict）序列化后的真实物理大小 (MB)
+    """
+    buffer = io.BytesIO()
+    torch.save(obj, buffer)
+    return len(buffer.getvalue()) / (1024 * 1024)
 
 def load_config(path):
     with open(path, 'r', encoding='utf-8') as f:
@@ -166,6 +175,12 @@ def run_single_mode(full_config, mode_name, current_mode_config):
     total_time_detect = 0.0
     total_time_secagg = 0.0
     
+    # [新增] 初始化单客户端的通信量统计变量 (MB)
+    total_comm_down_mb = 0.0
+    total_comm_up_proj_mb = 0.0
+    total_comm_up_model_mb = 0.0
+    total_comm_up_share_mb = 0.0
+    
     start_time = time.time()
     
     for r in range(1, total_rounds + 1):
@@ -177,6 +192,10 @@ def run_single_mode(full_config, mode_name, current_mode_config):
         
         global_params, _ = server.get_global_params_and_proj()
         current_proj_seed = int(seed + r)
+        
+        # 计算单客户端下发模型的通信量 (下行)
+        round_down_mb = get_obj_size_mb(global_params)
+        total_comm_down_mb += round_down_mb
         
         for c in clients: c.receive_model(global_params)
 
@@ -200,6 +219,10 @@ def run_single_mode(full_config, mode_name, current_mode_config):
             client_features_list.append(feat)
             client_data_sizes.append(dsize)
             
+        # 计算单客户端上传 TEE 投影的通信量 (上行)
+        round_up_proj_mb = get_obj_size_mb(client_features_list[0]) if client_features_list else 0.0
+        total_comm_up_proj_mb += round_up_proj_mb
+            
         t_p2_cost = time.time() - t_p2_start
         total_time_proj += t_p2_cost
         log(f"  >> TEE Projection Finished in {t_p2_cost:.2f}s")
@@ -220,6 +243,18 @@ def run_single_mode(full_config, mode_name, current_mode_config):
         # Phase 4 & 5: Secure Masking & Aggregation
         t_p4_start = time.time()
         server.secure_aggregation(clients, accepted_ids, round_num=r)
+        
+        # [修复] 补全 SecAgg 中 Cipher Upload 和 Share Upload 的精确开销
+        # 1. Cipher Upload: 加扰后的模型上传（张量加掩码不改变物理大小）
+        round_up_model_mb = round_down_mb 
+        total_comm_up_model_mb += round_up_model_mb
+        
+        # 2. Share Upload: 密钥碎片上传
+        # 标准 SecAgg 中，客户端需向被接受的其他节点广播 Share (估算单份 64 Bytes 包含 256-bit 掩码与头信息)
+        num_accepted = len(accepted_ids)
+        round_up_share_mb = (num_accepted * 64) / (1024 * 1024) if num_accepted > 0 else 0.0
+        total_comm_up_share_mb += round_up_share_mb
+        
         t_p4_cost = time.time() - t_p4_start
         total_time_secagg += t_p4_cost
 
@@ -238,6 +273,8 @@ def run_single_mode(full_config, mode_name, current_mode_config):
             asr_history.append(0.0)
             
         print(f"  [Time Stats] Train: {t_p1_cost:.2f}s | Proj: {t_p2_cost:.2f}s | Detect: {t_p3_cost:.2f}s | SecAgg: {t_p4_cost:.2f}s")
+        # 打印包含 Share 的综合本轮通信量
+        print(f"  [Comm Stats] Downlink: {round_down_mb:.4f} MB | Uplink(Proj): {round_up_proj_mb:.4f} MB | Uplink(Cipher): {round_up_model_mb:.4f} MB | Uplink(Share): {round_up_share_mb:.6f} MB")
 
     total_pipeline_time = total_time_train + total_time_proj + total_time_detect + total_time_secagg
     print("\n" + "="*50)
@@ -251,6 +288,23 @@ def run_single_mode(full_config, mode_name, current_mode_config):
     print("-" * 50)
     projection_defense_total = total_time_proj + total_time_detect
     print(f" ✨ Projection Detection Overhead: {projection_defense_total:.2f} s ({(projection_defense_total/total_pipeline_time)*100:.2f}%)")
+    print("="*50 + "\n")
+
+    # 最终通信量统计报告打印
+    total_comm_up_mb = total_comm_up_proj_mb + total_comm_up_model_mb + total_comm_up_share_mb
+    total_comm_mb = total_comm_down_mb + total_comm_up_mb
+    
+    print("="*50)
+    print(" 📊 FINAL COMMUNICATION PROFILING REPORT (Per Client)")
+    print("="*50)
+    print(f" Total Downlink (Server->Client) : {total_comm_down_mb:.4f} MB")
+    print(f" Total Uplink   (Client->Server) : {total_comm_up_mb:.4f} MB")
+    print(f"  ├─ Feature/Proj Uplink         : {total_comm_up_proj_mb:.4f} MB")
+    print(f"  ├─ Cipher Model Uplink         : {total_comm_up_model_mb:.4f} MB")
+    print(f"  └─ Secret Share Uplink         : {total_comm_up_share_mb:.6f} MB")
+    print("-" * 50)
+    print(f" ✨ Total Comm per Client        : {total_comm_mb:.4f} MB")
+    print(f" ✨ Projection Payload Ratio     : {(total_comm_up_proj_mb/total_comm_mb)*100:.2f}%")
     print("="*50 + "\n")
 
     print("[Saving] Saving final results...")
@@ -275,7 +329,6 @@ def main():
     
     config = load_config(args.config)
     
-    # [核心修复区]：强行绑定数据集和模型，避免通道数/输入尺寸等维度冲突
     model_name = config['data'].get('model', '').lower()
     if model_name == 'lenet5':
         config['data']['dataset'] = 'mnist'
