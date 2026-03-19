@@ -1,3 +1,0 @@
-python -u main.py --model resnet18 --attack none --defense none --rounds 100 > ./results/log_resnet18_noneAttack.txt 2>&1
-python -u main.py --model resnet18 --attack backdoor --poison_ratio 0.4 --defense layers_proj_detect --rounds 100 > ./results/log_resnet18_backdoor_p0.4_layers_proj_detect.txt 2>&1
-python -u main.py --model resnet18 --attack backdoor --poison_ratio 0.4 --defense clustering --rounds 100 > ./results/log_resnet18_backdoor_p0.4_clustering.txt 2>&1
