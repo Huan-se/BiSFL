@@ -1,9 +1,6 @@
-[submodule "IG_and_Canary/breaching"]
-	path = IG_and_Canary/breaching
-	url = git@github.com:JonasGeiping/breaching.git
-[submodule "Overall_Overhead/Lancelot"]
-	path = Overall_Overhead/Lancelot
-	url = https://github.com/siyang-jiang/Lancelot.git
 [submodule "TEST/Effect_Evaluation_Train_IG_and_Canary/breaching"]
 	path = TEST/Effect_Evaluation_Train_IG_and_Canary/breaching
 	url = https://github.com/JonasGeiping/breaching.git
+[submodule "TEST/Overall_Overhead/Lancelot"]
+	path = TEST/Overall_Overhead/Lancelot
+	url = https://github.com/siyang-jiang/Lancelot.git
