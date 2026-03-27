@@ -55,13 +55,14 @@ typedef struct ms_ecall_prepare_gradient_t {
 } ms_ecall_prepare_gradient_t;
 
 typedef struct ms_ecall_generate_masked_gradient_dynamic_t {
-	const char* ms_seed_mask_root_str;
-	size_t ms_seed_mask_root_str_len;
-	const char* ms_seed_global_0_str;
-	size_t ms_seed_global_0_str_len;
+	const char* ms_kappa_m_str;
+	size_t ms_kappa_m_str_len;
+	int ms_t;
+	const char* ms_model_hash_str;
+	size_t ms_model_hash_str_len;
 	int ms_client_id;
-	int* ms_active_ids;
-	size_t ms_active_count;
+	int* ms_u1_ids;
+	size_t ms_u1_len;
 	const char* ms_k_weight_str;
 	size_t ms_k_weight_str_len;
 	size_t ms_model_len;
@@ -72,18 +73,18 @@ typedef struct ms_ecall_generate_masked_gradient_dynamic_t {
 } ms_ecall_generate_masked_gradient_dynamic_t;
 
 typedef struct ms_ecall_get_vector_shares_dynamic_t {
-	const char* ms_seed_sss_str;
-	size_t ms_seed_sss_str_len;
-	const char* ms_seed_mask_root_str;
-	size_t ms_seed_mask_root_str_len;
+	const char* ms_kappa_s_str;
+	size_t ms_kappa_s_str_len;
+	const char* ms_kappa_m_str;
+	size_t ms_kappa_m_str_len;
+	int ms_t;
 	int* ms_u1_ids;
 	size_t ms_u1_len;
 	int* ms_u2_ids;
 	size_t ms_u2_len;
-	int ms_my_client_id;
-	int ms_threshold;
+	int ms_my_id;
 	long long* ms_output_vector;
-	size_t ms_out_max_len;
+	size_t ms_max_len;
 } ms_ecall_get_vector_shares_dynamic_t;
 
 typedef struct ms_ecall_generate_noise_from_seed_t {
@@ -455,16 +456,16 @@ static sgx_status_t SGX_CDECL sgx_ecall_generate_masked_gradient_dynamic(void* p
 	sgx_lfence();
 	ms_ecall_generate_masked_gradient_dynamic_t* ms = SGX_CAST(ms_ecall_generate_masked_gradient_dynamic_t*, pms);
 	sgx_status_t status = SGX_SUCCESS;
-	const char* _tmp_seed_mask_root_str = ms->ms_seed_mask_root_str;
-	size_t _len_seed_mask_root_str = ms->ms_seed_mask_root_str_len ;
-	char* _in_seed_mask_root_str = NULL;
-	const char* _tmp_seed_global_0_str = ms->ms_seed_global_0_str;
-	size_t _len_seed_global_0_str = ms->ms_seed_global_0_str_len ;
-	char* _in_seed_global_0_str = NULL;
-	int* _tmp_active_ids = ms->ms_active_ids;
-	size_t _tmp_active_count = ms->ms_active_count;
-	size_t _len_active_ids = _tmp_active_count * sizeof(int);
-	int* _in_active_ids = NULL;
+	const char* _tmp_kappa_m_str = ms->ms_kappa_m_str;
+	size_t _len_kappa_m_str = ms->ms_kappa_m_str_len ;
+	char* _in_kappa_m_str = NULL;
+	const char* _tmp_model_hash_str = ms->ms_model_hash_str;
+	size_t _len_model_hash_str = ms->ms_model_hash_str_len ;
+	char* _in_model_hash_str = NULL;
+	int* _tmp_u1_ids = ms->ms_u1_ids;
+	size_t _tmp_u1_len = ms->ms_u1_len;
+	size_t _len_u1_ids = _tmp_u1_len * sizeof(int);
+	int* _in_u1_ids = NULL;
 	const char* _tmp_k_weight_str = ms->ms_k_weight_str;
 	size_t _len_k_weight_str = ms->ms_k_weight_str_len ;
 	char* _in_k_weight_str = NULL;
@@ -477,8 +478,8 @@ static sgx_status_t SGX_CDECL sgx_ecall_generate_masked_gradient_dynamic(void* p
 	size_t _len_output = _tmp_out_len * sizeof(long long);
 	long long* _in_output = NULL;
 
-	if (sizeof(*_tmp_active_ids) != 0 &&
-		(size_t)_tmp_active_count > (SIZE_MAX / sizeof(*_tmp_active_ids))) {
+	if (sizeof(*_tmp_u1_ids) != 0 &&
+		(size_t)_tmp_u1_len > (SIZE_MAX / sizeof(*_tmp_u1_ids))) {
 		return SGX_ERROR_INVALID_PARAMETER;
 	}
 
@@ -492,9 +493,9 @@ static sgx_status_t SGX_CDECL sgx_ecall_generate_masked_gradient_dynamic(void* p
 		return SGX_ERROR_INVALID_PARAMETER;
 	}
 
-	CHECK_UNIQUE_POINTER(_tmp_seed_mask_root_str, _len_seed_mask_root_str);
-	CHECK_UNIQUE_POINTER(_tmp_seed_global_0_str, _len_seed_global_0_str);
-	CHECK_UNIQUE_POINTER(_tmp_active_ids, _len_active_ids);
+	CHECK_UNIQUE_POINTER(_tmp_kappa_m_str, _len_kappa_m_str);
+	CHECK_UNIQUE_POINTER(_tmp_model_hash_str, _len_model_hash_str);
+	CHECK_UNIQUE_POINTER(_tmp_u1_ids, _len_u1_ids);
 	CHECK_UNIQUE_POINTER(_tmp_k_weight_str, _len_k_weight_str);
 	CHECK_UNIQUE_POINTER(_tmp_ranges, _len_ranges);
 	CHECK_UNIQUE_POINTER(_tmp_output, _len_output);
@@ -504,57 +505,57 @@ static sgx_status_t SGX_CDECL sgx_ecall_generate_masked_gradient_dynamic(void* p
 	//
 	sgx_lfence();
 
-	if (_tmp_seed_mask_root_str != NULL && _len_seed_mask_root_str != 0) {
-		_in_seed_mask_root_str = (char*)malloc(_len_seed_mask_root_str);
-		if (_in_seed_mask_root_str == NULL) {
+	if (_tmp_kappa_m_str != NULL && _len_kappa_m_str != 0) {
+		_in_kappa_m_str = (char*)malloc(_len_kappa_m_str);
+		if (_in_kappa_m_str == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
 
-		if (memcpy_s(_in_seed_mask_root_str, _len_seed_mask_root_str, _tmp_seed_mask_root_str, _len_seed_mask_root_str)) {
+		if (memcpy_s(_in_kappa_m_str, _len_kappa_m_str, _tmp_kappa_m_str, _len_kappa_m_str)) {
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 
-		_in_seed_mask_root_str[_len_seed_mask_root_str - 1] = '\0';
-		if (_len_seed_mask_root_str != strlen(_in_seed_mask_root_str) + 1)
+		_in_kappa_m_str[_len_kappa_m_str - 1] = '\0';
+		if (_len_kappa_m_str != strlen(_in_kappa_m_str) + 1)
 		{
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 	}
-	if (_tmp_seed_global_0_str != NULL && _len_seed_global_0_str != 0) {
-		_in_seed_global_0_str = (char*)malloc(_len_seed_global_0_str);
-		if (_in_seed_global_0_str == NULL) {
+	if (_tmp_model_hash_str != NULL && _len_model_hash_str != 0) {
+		_in_model_hash_str = (char*)malloc(_len_model_hash_str);
+		if (_in_model_hash_str == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
 
-		if (memcpy_s(_in_seed_global_0_str, _len_seed_global_0_str, _tmp_seed_global_0_str, _len_seed_global_0_str)) {
+		if (memcpy_s(_in_model_hash_str, _len_model_hash_str, _tmp_model_hash_str, _len_model_hash_str)) {
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 
-		_in_seed_global_0_str[_len_seed_global_0_str - 1] = '\0';
-		if (_len_seed_global_0_str != strlen(_in_seed_global_0_str) + 1)
+		_in_model_hash_str[_len_model_hash_str - 1] = '\0';
+		if (_len_model_hash_str != strlen(_in_model_hash_str) + 1)
 		{
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 	}
-	if (_tmp_active_ids != NULL && _len_active_ids != 0) {
-		if ( _len_active_ids % sizeof(*_tmp_active_ids) != 0)
+	if (_tmp_u1_ids != NULL && _len_u1_ids != 0) {
+		if ( _len_u1_ids % sizeof(*_tmp_u1_ids) != 0)
 		{
 			status = SGX_ERROR_INVALID_PARAMETER;
 			goto err;
 		}
-		_in_active_ids = (int*)malloc(_len_active_ids);
-		if (_in_active_ids == NULL) {
+		_in_u1_ids = (int*)malloc(_len_u1_ids);
+		if (_in_u1_ids == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
 
-		if (memcpy_s(_in_active_ids, _len_active_ids, _tmp_active_ids, _len_active_ids)) {
+		if (memcpy_s(_in_u1_ids, _len_u1_ids, _tmp_u1_ids, _len_u1_ids)) {
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
@@ -611,7 +612,7 @@ static sgx_status_t SGX_CDECL sgx_ecall_generate_masked_gradient_dynamic(void* p
 		memset((void*)_in_output, 0, _len_output);
 	}
 
-	ecall_generate_masked_gradient_dynamic((const char*)_in_seed_mask_root_str, (const char*)_in_seed_global_0_str, ms->ms_client_id, _in_active_ids, _tmp_active_count, (const char*)_in_k_weight_str, ms->ms_model_len, _in_ranges, _tmp_ranges_len, _in_output, _tmp_out_len);
+	ecall_generate_masked_gradient_dynamic((const char*)_in_kappa_m_str, ms->ms_t, (const char*)_in_model_hash_str, ms->ms_client_id, _in_u1_ids, _tmp_u1_len, (const char*)_in_k_weight_str, ms->ms_model_len, _in_ranges, _tmp_ranges_len, _in_output, _tmp_out_len);
 	if (_in_output) {
 		if (memcpy_s(_tmp_output, _len_output, _in_output, _len_output)) {
 			status = SGX_ERROR_UNEXPECTED;
@@ -620,9 +621,9 @@ static sgx_status_t SGX_CDECL sgx_ecall_generate_masked_gradient_dynamic(void* p
 	}
 
 err:
-	if (_in_seed_mask_root_str) free(_in_seed_mask_root_str);
-	if (_in_seed_global_0_str) free(_in_seed_global_0_str);
-	if (_in_active_ids) free(_in_active_ids);
+	if (_in_kappa_m_str) free(_in_kappa_m_str);
+	if (_in_model_hash_str) free(_in_model_hash_str);
+	if (_in_u1_ids) free(_in_u1_ids);
 	if (_in_k_weight_str) free(_in_k_weight_str);
 	if (_in_ranges) free(_in_ranges);
 	if (_in_output) free(_in_output);
@@ -638,12 +639,12 @@ static sgx_status_t SGX_CDECL sgx_ecall_get_vector_shares_dynamic(void* pms)
 	sgx_lfence();
 	ms_ecall_get_vector_shares_dynamic_t* ms = SGX_CAST(ms_ecall_get_vector_shares_dynamic_t*, pms);
 	sgx_status_t status = SGX_SUCCESS;
-	const char* _tmp_seed_sss_str = ms->ms_seed_sss_str;
-	size_t _len_seed_sss_str = ms->ms_seed_sss_str_len ;
-	char* _in_seed_sss_str = NULL;
-	const char* _tmp_seed_mask_root_str = ms->ms_seed_mask_root_str;
-	size_t _len_seed_mask_root_str = ms->ms_seed_mask_root_str_len ;
-	char* _in_seed_mask_root_str = NULL;
+	const char* _tmp_kappa_s_str = ms->ms_kappa_s_str;
+	size_t _len_kappa_s_str = ms->ms_kappa_s_str_len ;
+	char* _in_kappa_s_str = NULL;
+	const char* _tmp_kappa_m_str = ms->ms_kappa_m_str;
+	size_t _len_kappa_m_str = ms->ms_kappa_m_str_len ;
+	char* _in_kappa_m_str = NULL;
 	int* _tmp_u1_ids = ms->ms_u1_ids;
 	size_t _tmp_u1_len = ms->ms_u1_len;
 	size_t _len_u1_ids = _tmp_u1_len * sizeof(int);
@@ -653,8 +654,8 @@ static sgx_status_t SGX_CDECL sgx_ecall_get_vector_shares_dynamic(void* pms)
 	size_t _len_u2_ids = _tmp_u2_len * sizeof(int);
 	int* _in_u2_ids = NULL;
 	long long* _tmp_output_vector = ms->ms_output_vector;
-	size_t _tmp_out_max_len = ms->ms_out_max_len;
-	size_t _len_output_vector = _tmp_out_max_len * sizeof(long long);
+	size_t _tmp_max_len = ms->ms_max_len;
+	size_t _len_output_vector = _tmp_max_len * sizeof(long long);
 	long long* _in_output_vector = NULL;
 
 	if (sizeof(*_tmp_u1_ids) != 0 &&
@@ -668,12 +669,12 @@ static sgx_status_t SGX_CDECL sgx_ecall_get_vector_shares_dynamic(void* pms)
 	}
 
 	if (sizeof(*_tmp_output_vector) != 0 &&
-		(size_t)_tmp_out_max_len > (SIZE_MAX / sizeof(*_tmp_output_vector))) {
+		(size_t)_tmp_max_len > (SIZE_MAX / sizeof(*_tmp_output_vector))) {
 		return SGX_ERROR_INVALID_PARAMETER;
 	}
 
-	CHECK_UNIQUE_POINTER(_tmp_seed_sss_str, _len_seed_sss_str);
-	CHECK_UNIQUE_POINTER(_tmp_seed_mask_root_str, _len_seed_mask_root_str);
+	CHECK_UNIQUE_POINTER(_tmp_kappa_s_str, _len_kappa_s_str);
+	CHECK_UNIQUE_POINTER(_tmp_kappa_m_str, _len_kappa_m_str);
 	CHECK_UNIQUE_POINTER(_tmp_u1_ids, _len_u1_ids);
 	CHECK_UNIQUE_POINTER(_tmp_u2_ids, _len_u2_ids);
 	CHECK_UNIQUE_POINTER(_tmp_output_vector, _len_output_vector);
@@ -683,39 +684,39 @@ static sgx_status_t SGX_CDECL sgx_ecall_get_vector_shares_dynamic(void* pms)
 	//
 	sgx_lfence();
 
-	if (_tmp_seed_sss_str != NULL && _len_seed_sss_str != 0) {
-		_in_seed_sss_str = (char*)malloc(_len_seed_sss_str);
-		if (_in_seed_sss_str == NULL) {
+	if (_tmp_kappa_s_str != NULL && _len_kappa_s_str != 0) {
+		_in_kappa_s_str = (char*)malloc(_len_kappa_s_str);
+		if (_in_kappa_s_str == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
 
-		if (memcpy_s(_in_seed_sss_str, _len_seed_sss_str, _tmp_seed_sss_str, _len_seed_sss_str)) {
+		if (memcpy_s(_in_kappa_s_str, _len_kappa_s_str, _tmp_kappa_s_str, _len_kappa_s_str)) {
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 
-		_in_seed_sss_str[_len_seed_sss_str - 1] = '\0';
-		if (_len_seed_sss_str != strlen(_in_seed_sss_str) + 1)
+		_in_kappa_s_str[_len_kappa_s_str - 1] = '\0';
+		if (_len_kappa_s_str != strlen(_in_kappa_s_str) + 1)
 		{
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 	}
-	if (_tmp_seed_mask_root_str != NULL && _len_seed_mask_root_str != 0) {
-		_in_seed_mask_root_str = (char*)malloc(_len_seed_mask_root_str);
-		if (_in_seed_mask_root_str == NULL) {
+	if (_tmp_kappa_m_str != NULL && _len_kappa_m_str != 0) {
+		_in_kappa_m_str = (char*)malloc(_len_kappa_m_str);
+		if (_in_kappa_m_str == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
 
-		if (memcpy_s(_in_seed_mask_root_str, _len_seed_mask_root_str, _tmp_seed_mask_root_str, _len_seed_mask_root_str)) {
+		if (memcpy_s(_in_kappa_m_str, _len_kappa_m_str, _tmp_kappa_m_str, _len_kappa_m_str)) {
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 
-		_in_seed_mask_root_str[_len_seed_mask_root_str - 1] = '\0';
-		if (_len_seed_mask_root_str != strlen(_in_seed_mask_root_str) + 1)
+		_in_kappa_m_str[_len_kappa_m_str - 1] = '\0';
+		if (_len_kappa_m_str != strlen(_in_kappa_m_str) + 1)
 		{
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
@@ -771,7 +772,7 @@ static sgx_status_t SGX_CDECL sgx_ecall_get_vector_shares_dynamic(void* pms)
 		memset((void*)_in_output_vector, 0, _len_output_vector);
 	}
 
-	ecall_get_vector_shares_dynamic((const char*)_in_seed_sss_str, (const char*)_in_seed_mask_root_str, _in_u1_ids, _tmp_u1_len, _in_u2_ids, _tmp_u2_len, ms->ms_my_client_id, ms->ms_threshold, _in_output_vector, _tmp_out_max_len);
+	ecall_get_vector_shares_dynamic((const char*)_in_kappa_s_str, (const char*)_in_kappa_m_str, ms->ms_t, _in_u1_ids, _tmp_u1_len, _in_u2_ids, _tmp_u2_len, ms->ms_my_id, _in_output_vector, _tmp_max_len);
 	if (_in_output_vector) {
 		if (memcpy_s(_tmp_output_vector, _len_output_vector, _in_output_vector, _len_output_vector)) {
 			status = SGX_ERROR_UNEXPECTED;
@@ -780,8 +781,8 @@ static sgx_status_t SGX_CDECL sgx_ecall_get_vector_shares_dynamic(void* pms)
 	}
 
 err:
-	if (_in_seed_sss_str) free(_in_seed_sss_str);
-	if (_in_seed_mask_root_str) free(_in_seed_mask_root_str);
+	if (_in_kappa_s_str) free(_in_kappa_s_str);
+	if (_in_kappa_m_str) free(_in_kappa_m_str);
 	if (_in_u1_ids) free(_in_u1_ids);
 	if (_in_u2_ids) free(_in_u2_ids);
 	if (_in_output_vector) free(_in_output_vector);

@@ -19,13 +19,8 @@ void ocall_print_string(const char *str) {
 extern "C" {
 
 void tee_set_verbose(int level) {
-    if (global_eid == 0) return; // 还没有初始化 Enclave
-    
-    // 调用 Enclave 的 ECALL 进行设置
+    if (global_eid == 0) return; 
     ecall_set_verbose(global_eid, level);
-    
-    // 如果 Bridge 层自己也有日志，也可以控制
-    // printf("[Bridge] Verbose set to %d\n", level);
 }
 
 int tee_init(const char* enclave_path) {
@@ -35,7 +30,6 @@ int tee_init(const char* enclave_path) {
         print_error_message(ret);
         return -1;
     }
-    // printf("[Bridge] App: Enclave created successfully (EID: %lu).\n", global_eid);
     return 0;
 }
 
@@ -60,37 +54,38 @@ void tee_prepare_gradient(
 }
 
 void tee_generate_masked_gradient_dynamic(
-    const char* seed_mask_root_str, 
-    const char* seed_global_0_str, 
+    const char* kappa_m_str,
+    int t,
+    const char* model_hash_str,
     int client_id, 
-    int* active_ids, size_t active_count,
+    int* u1_ids, size_t u1_len,
     const char* k_weight_str, 
     size_t model_len, 
     int* ranges, size_t ranges_len, 
     long long* output, size_t out_len
 ) {
     sgx_status_t ret = ecall_generate_masked_gradient_dynamic(
-        global_eid, seed_mask_root_str, seed_global_0_str, client_id, 
-        active_ids, active_count, k_weight_str, 
+        global_eid, kappa_m_str, t, model_hash_str, client_id, 
+        u1_ids, u1_len, k_weight_str, 
         model_len, ranges, ranges_len, output, out_len
     );
     if (ret != SGX_SUCCESS) print_error_message(ret);
 }
 
 void tee_get_vector_shares_dynamic(
-    const char* seed_sss_str, 
-    const char* seed_mask_root_str, 
+    const char* kappa_s_str, 
+    const char* kappa_m_str, 
+    int t,
     int* u1_ids, size_t u1_len, 
     int* u2_ids, size_t u2_len, 
-    int my_client_id, 
-    int threshold, 
+    int my_id, 
     long long* output_vector, 
-    size_t out_max_len
+    size_t max_len
 ) {
     sgx_status_t ret = ecall_get_vector_shares_dynamic(
-        global_eid, seed_sss_str, seed_mask_root_str, 
-        u1_ids, u1_len, u2_ids, u2_len, my_client_id, threshold, 
-        output_vector, out_max_len
+        global_eid, kappa_s_str, kappa_m_str, t,
+        u1_ids, u1_len, u2_ids, u2_len, my_id, 
+        output_vector, max_len
     );
     if (ret != SGX_SUCCESS) print_error_message(ret);
 }

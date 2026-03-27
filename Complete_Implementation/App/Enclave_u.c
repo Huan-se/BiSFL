@@ -29,13 +29,14 @@ typedef struct ms_ecall_prepare_gradient_t {
 } ms_ecall_prepare_gradient_t;
 
 typedef struct ms_ecall_generate_masked_gradient_dynamic_t {
-	const char* ms_seed_mask_root_str;
-	size_t ms_seed_mask_root_str_len;
-	const char* ms_seed_global_0_str;
-	size_t ms_seed_global_0_str_len;
+	const char* ms_kappa_m_str;
+	size_t ms_kappa_m_str_len;
+	int ms_t;
+	const char* ms_model_hash_str;
+	size_t ms_model_hash_str_len;
 	int ms_client_id;
-	int* ms_active_ids;
-	size_t ms_active_count;
+	int* ms_u1_ids;
+	size_t ms_u1_len;
 	const char* ms_k_weight_str;
 	size_t ms_k_weight_str_len;
 	size_t ms_model_len;
@@ -46,18 +47,18 @@ typedef struct ms_ecall_generate_masked_gradient_dynamic_t {
 } ms_ecall_generate_masked_gradient_dynamic_t;
 
 typedef struct ms_ecall_get_vector_shares_dynamic_t {
-	const char* ms_seed_sss_str;
-	size_t ms_seed_sss_str_len;
-	const char* ms_seed_mask_root_str;
-	size_t ms_seed_mask_root_str_len;
+	const char* ms_kappa_s_str;
+	size_t ms_kappa_s_str_len;
+	const char* ms_kappa_m_str;
+	size_t ms_kappa_m_str_len;
+	int ms_t;
 	int* ms_u1_ids;
 	size_t ms_u1_len;
 	int* ms_u2_ids;
 	size_t ms_u2_len;
-	int ms_my_client_id;
-	int ms_threshold;
+	int ms_my_id;
 	long long* ms_output_vector;
-	size_t ms_out_max_len;
+	size_t ms_max_len;
 } ms_ecall_get_vector_shares_dynamic_t;
 
 typedef struct ms_ecall_generate_noise_from_seed_t {
@@ -208,17 +209,18 @@ sgx_status_t ecall_prepare_gradient(sgx_enclave_id_t eid, int client_id, const c
 	return status;
 }
 
-sgx_status_t ecall_generate_masked_gradient_dynamic(sgx_enclave_id_t eid, const char* seed_mask_root_str, const char* seed_global_0_str, int client_id, int* active_ids, size_t active_count, const char* k_weight_str, size_t model_len, int* ranges, size_t ranges_len, long long* output, size_t out_len)
+sgx_status_t ecall_generate_masked_gradient_dynamic(sgx_enclave_id_t eid, const char* kappa_m_str, int t, const char* model_hash_str, int client_id, int* u1_ids, size_t u1_len, const char* k_weight_str, size_t model_len, int* ranges, size_t ranges_len, long long* output, size_t out_len)
 {
 	sgx_status_t status;
 	ms_ecall_generate_masked_gradient_dynamic_t ms;
-	ms.ms_seed_mask_root_str = seed_mask_root_str;
-	ms.ms_seed_mask_root_str_len = seed_mask_root_str ? strlen(seed_mask_root_str) + 1 : 0;
-	ms.ms_seed_global_0_str = seed_global_0_str;
-	ms.ms_seed_global_0_str_len = seed_global_0_str ? strlen(seed_global_0_str) + 1 : 0;
+	ms.ms_kappa_m_str = kappa_m_str;
+	ms.ms_kappa_m_str_len = kappa_m_str ? strlen(kappa_m_str) + 1 : 0;
+	ms.ms_t = t;
+	ms.ms_model_hash_str = model_hash_str;
+	ms.ms_model_hash_str_len = model_hash_str ? strlen(model_hash_str) + 1 : 0;
 	ms.ms_client_id = client_id;
-	ms.ms_active_ids = active_ids;
-	ms.ms_active_count = active_count;
+	ms.ms_u1_ids = u1_ids;
+	ms.ms_u1_len = u1_len;
 	ms.ms_k_weight_str = k_weight_str;
 	ms.ms_k_weight_str_len = k_weight_str ? strlen(k_weight_str) + 1 : 0;
 	ms.ms_model_len = model_len;
@@ -230,22 +232,22 @@ sgx_status_t ecall_generate_masked_gradient_dynamic(sgx_enclave_id_t eid, const 
 	return status;
 }
 
-sgx_status_t ecall_get_vector_shares_dynamic(sgx_enclave_id_t eid, const char* seed_sss_str, const char* seed_mask_root_str, int* u1_ids, size_t u1_len, int* u2_ids, size_t u2_len, int my_client_id, int threshold, long long* output_vector, size_t out_max_len)
+sgx_status_t ecall_get_vector_shares_dynamic(sgx_enclave_id_t eid, const char* kappa_s_str, const char* kappa_m_str, int t, int* u1_ids, size_t u1_len, int* u2_ids, size_t u2_len, int my_id, long long* output_vector, size_t max_len)
 {
 	sgx_status_t status;
 	ms_ecall_get_vector_shares_dynamic_t ms;
-	ms.ms_seed_sss_str = seed_sss_str;
-	ms.ms_seed_sss_str_len = seed_sss_str ? strlen(seed_sss_str) + 1 : 0;
-	ms.ms_seed_mask_root_str = seed_mask_root_str;
-	ms.ms_seed_mask_root_str_len = seed_mask_root_str ? strlen(seed_mask_root_str) + 1 : 0;
+	ms.ms_kappa_s_str = kappa_s_str;
+	ms.ms_kappa_s_str_len = kappa_s_str ? strlen(kappa_s_str) + 1 : 0;
+	ms.ms_kappa_m_str = kappa_m_str;
+	ms.ms_kappa_m_str_len = kappa_m_str ? strlen(kappa_m_str) + 1 : 0;
+	ms.ms_t = t;
 	ms.ms_u1_ids = u1_ids;
 	ms.ms_u1_len = u1_len;
 	ms.ms_u2_ids = u2_ids;
 	ms.ms_u2_len = u2_len;
-	ms.ms_my_client_id = my_client_id;
-	ms.ms_threshold = threshold;
+	ms.ms_my_id = my_id;
 	ms.ms_output_vector = output_vector;
-	ms.ms_out_max_len = out_max_len;
+	ms.ms_max_len = max_len;
 	status = sgx_ecall(eid, 5, &ocall_table_Enclave, &ms);
 	return status;
 }

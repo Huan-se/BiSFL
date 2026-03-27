@@ -28,7 +28,7 @@ federated:
 # ================= 数据与模型 =================
 data:
   dataset: "mnist"  # mnist, cifar10
-  model: "resnet18"    # lenet5, resnet20, or resnet18
+  model: "lenet5"    # lenet5, resnet20, or resnet18
   if_noniid: false
   alpha: 0.5          # Non-IID 的狄利克雷分布参数
 
