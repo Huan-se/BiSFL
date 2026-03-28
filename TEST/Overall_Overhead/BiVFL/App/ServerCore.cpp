@@ -1,91 +1,41 @@
 /* App/ServerCore.cpp */
 #include <vector>
-#include <random>
-#include <algorithm>
-#include <cstring>
-#include <cmath>
 #include <string>
-#include <iostream>
-#include <openssl/sha.h> 
-#include <cstdio> 
+#include <cmath>
 #include <map>
+#include <random>
+#include <iostream>
+#include <cstring>
+#include <openssl/sha.h> 
 
-// [关键修改] 使用 128 位整数防止溢出
 typedef __int128_t int128;
 const long long MOD = 9223372036854775783;
-static int g_core_verbose = 0;
-#define LOG_DEBUG(fmt, ...) \
-    do { if (g_core_verbose) printf("[ServerCore DEBUG] " fmt, ##__VA_ARGS__); } while (0)
-// ---------------------------------------------------------
-// 基础工具函数
-// ---------------------------------------------------------
-// void server_core_set_verbose(int level) {
-//     g_core_verbose = level;
-//     // printf("[ServerCore] Verbose level set to: %d\n", level);
-// }
-long long parse_long(const char* str) {
-    if (!str) return 0;
-    try { return std::stoll(str); } catch (...) { return 0; }
-}
-class CryptoUtils {
-public:
-    static long derive_seed(long root, const char* purpose, int id) {
-        std::string s = std::to_string(root) + purpose + std::to_string(id);
-        unsigned char hash[SHA256_DIGEST_LENGTH];
-        SHA256((const unsigned char*)s.c_str(), s.length(), hash);
-        uint32_t seed_val;
-        std::memcpy(&seed_val, hash, sizeof(uint32_t));
-        return (long)(seed_val & 0x7FFFFFFF);
-    }
-};
+const double SCALE = 100000000.0; // 引入常量 SCALE
 
 class MathUtils {
 public:
-    // 安全加法: (a + b) % m
     static long long safe_mod_add(long long a, long long b) {
-        int128 ua = (int128)a;
-        int128 ub = (int128)b;
-        if (ua < 0) ua += MOD;
-        if (ub < 0) ub += MOD;
+        int128 ua = (int128)a; int128 ub = (int128)b;
+        if (ua < 0) ua += MOD; if (ub < 0) ub += MOD;
         return (long long)((ua + ub) % (int128)MOD);
     }
-
-    // 安全减法: (a - b) % m
     static long long safe_mod_sub(long long a, long long b) {
-        int128 ua = (int128)a;
-        int128 ub = (int128)b;
-        if (ua < 0) ua += MOD;
-        if (ub < 0) ub += MOD;
-        
+        int128 ua = (int128)a; int128 ub = (int128)b;
+        if (ua < 0) ua += MOD; if (ub < 0) ub += MOD;
         int128 res = (ua - ub) % (int128)MOD;
         if (res < 0) res += MOD;
         return (long long)res;
     }
-
-    // 安全乘法: (a * b) % m
     static long long safe_mod_mul(long long a, long long b) {
-        int128 ua = (int128)a;
-        int128 ub = (int128)b;
-        if (ua < 0) ua += MOD;
-        if (ub < 0) ub += MOD;
+        int128 ua = (int128)a; int128 ub = (int128)b;
+        if (ua < 0) ua += MOD; if (ub < 0) ub += MOD;
         return (long long)((ua * ub) % (int128)MOD);
     }
-
-    // 兼容旧接口的重载 (忽略 m 参数)
-    static long long safe_mod_mul(long long a, long long b, long long m) {
-        return safe_mod_mul(a, b);
-    }
-
-    // [核心修复] 使用费马小定理求逆元 (a^(MOD-2) % MOD)
     static long long mod_inverse(long long n) {
         if (n == 0) return 0;
-        int128 base = (int128)n;
-        if (base < 0) base += MOD;
-        
+        int128 base = (int128)n; if (base < 0) base += MOD;
         int128 exp = (int128)MOD - 2; 
-        int128 res = 1;
-        
-        base %= MOD;
+        int128 res = 1; base %= MOD;
         while (exp > 0) {
             if (exp % 2 == 1) res = (res * base) % MOD;
             base = (base * base) % MOD;
@@ -95,146 +45,114 @@ public:
     }
 };
 
+class CryptoUtils {
+public:
+    static long derive_seed(long root, const char* purpose, int id) {
+        std::string s = std::to_string(root) + "_" + purpose + "_" + std::to_string(id);
+        unsigned char hash[SHA256_DIGEST_LENGTH];
+        SHA256((const unsigned char*)s.c_str(), s.length(), hash);
+        uint32_t seed_val;
+        std::memcpy(&seed_val, hash, sizeof(uint32_t));
+        return (long)(seed_val & 0x7FFFFFFF);
+    }
+};
+
 class DeterministicRandom {
 private: std::mt19937 gen;
 public:
     DeterministicRandom(long seed) : gen((unsigned int)seed) {}
-    long long next_mask_mod() {
+    long long next_mask_mod() { 
         uint64_t limit = UINT64_MAX - (UINT64_MAX % MOD);
         uint64_t val;
-        do {
-            val = ((uint64_t)gen() << 32) | gen();
-        } while (val >= limit);
+        do { val = ((uint64_t)gen() << 32) | gen(); } while (val >= limit);
         return (long long)(val % MOD);
     }
 };
 
-// ---------------------------------------------------------
-// 核心算法: 拉格朗日插值 (求截距 L(0))
-// ---------------------------------------------------------
-long long lagrange_interpolate_zero(const std::vector<int>& x_coords, const std::vector<long long>& y_coords) {
-    size_t k = x_coords.size();
-    long long secret = 0;
-    
-    for (size_t j = 0; j < k; ++j) {
-        long long num = 1; 
-        long long den = 1;
-        long long xj = x_coords[j];
-        
-        for (size_t m = 0; m < k; ++m) {
-            if (m == j) continue;
-            long long xm = x_coords[m];
-            
-            // num *= (0 - xm)
-            long long term_num = MathUtils::safe_mod_sub(0, xm);
-            num = MathUtils::safe_mod_mul(num, term_num);
-            
-            // den *= (xj - xm)
-            long long term_den = MathUtils::safe_mod_sub(xj, xm);
-            den = MathUtils::safe_mod_mul(den, term_den);
+long long lagrange_interpolate_zero(const std::vector<int>& xs, const std::vector<long long>& ys) {
+    long long result = 0; int k = xs.size();
+    for (int i = 0; i < k; ++i) {
+        long long num = 1; long long den = 1;
+        for (int j = 0; j < k; ++j) {
+            if (i != j) {
+                long long neg_xj = MathUtils::safe_mod_sub(0, xs[j]);
+                num = MathUtils::safe_mod_mul(num, neg_xj);
+                long long diff = MathUtils::safe_mod_sub(xs[i], xs[j]);
+                den = MathUtils::safe_mod_mul(den, diff);
+            }
         }
-        
-        long long den_inv = MathUtils::mod_inverse(den);
-        long long term = MathUtils::safe_mod_mul(y_coords[j], num);
-        term = MathUtils::safe_mod_mul(term, den_inv);
-        
-        secret = MathUtils::safe_mod_add(secret, term);
+        long long term = MathUtils::safe_mod_mul(ys[i], num);
+        long long inv_den = MathUtils::mod_inverse(den);
+        term = MathUtils::safe_mod_mul(term, inv_den);
+        result = MathUtils::safe_mod_add(result, term);
     }
-    return secret;
+    return result;
 }
 
 extern "C" {
-
-void server_core_set_verbose(int level) {
-    g_core_verbose = level;
-}
-
-// ---------------------------------------------------------
-// 接口: 聚合与消去 (Server Core Aggregate & Unmask)
-// ---------------------------------------------------------
 void server_core_aggregate_and_unmask(
-    const char* seed_mask_root_str,
-    const char* seed_global_0_str,
-    int* u1_ids, int u1_len, 
-    int* u2_ids, int u2_len, 
-    long long* shares_flat, 
-    int vector_len,          
-    long long* ciphers_flat, 
-    int data_len,            
-    long long* output_result 
+    int* u1_ids, int u1_len, int* u2_ids, int u2_len, 
+    long long* shares_flat, int shares_len, long long* ciphers_flat, int data_len, 
+    const char* kappa_m_str, int t, const char* model_hash_str, int threshold, 
+    float* output_result // [核心修改]：直接输出 float，避开 Python 截断
 ) {
-    long long seed_global_0 = parse_long(seed_global_0_str);
+    long kappa_m = std::strtol(kappa_m_str, NULL, 10);
+    long long H_val = std::stoll(model_hash_str) % MOD;
 
-    // Step 1: 恢复秘密向量 S
-    std::vector<long long> reconstructed_secrets(vector_len);
-    std::vector<int> x_coords;
-    for(int i=0; i<u2_len; ++i) x_coords.push_back(u2_ids[i] + 1);
+    std::map<int, std::vector<std::pair<int, long long>>> shares_self, shares_alpha, shares_beta;
 
-    LOG_DEBUG("[ServerCore] Recovering Secret Vector (Len=%d) from %d clients...\n", vector_len, u2_len);
-
-    for (int k = 0; k < vector_len; ++k) {
-        std::vector<long long> y_coords;
-        for (int i = 0; i < u2_len; ++i) {
-            long long share = shares_flat[i * (size_t)vector_len + k];
-            y_coords.push_back(share);
-        }
-        reconstructed_secrets[k] = lagrange_interpolate_zero(x_coords, y_coords);
+    for (int i = 0; i < shares_len; i += 4) {
+        int source = shares_flat[i]; int tag = shares_flat[i+1];
+        int target = shares_flat[i+2]; long long val = shares_flat[i+3];
+        int x_coord = source + 1; 
+        if (tag == 1) shares_self[target].push_back({x_coord, val});
+        else if (tag == 2) shares_alpha[target].push_back({x_coord, val});
+        else if (tag == 3) shares_beta[target].push_back({x_coord, val});
     }
 
-    // Step 2: 解析秘密向量
-    long long delta = reconstructed_secrets[0];
-    long long alpha_seed_rec = reconstructed_secrets[1];
-    LOG_DEBUG("[ServerCore] RECONSTRUCTED DELTA: %lld\n", delta);
+    auto interpolate = [&](int target, const std::vector<std::pair<int, long long>>& pts) -> long long {
+        if((int)pts.size() < threshold) return 0; 
+        std::vector<int> xs; std::vector<long long> ys;
+        for(int k=0; k<threshold; ++k) { xs.push_back(pts[k].first); ys.push_back(pts[k].second); }
+        return lagrange_interpolate_zero(xs, ys);
+    };
 
-    std::map<int, long long> beta_map;
+    std::vector<DeterministicRandom> active_self_rngs, dropped_alpha_rngs, dropped_beta_rngs;
+    
+    for(auto& kv : shares_self) { long long s = interpolate(kv.first, kv.second); if(s > 0) active_self_rngs.emplace_back((long)s); }
+    for(auto& kv : shares_alpha) { long long s = interpolate(kv.first, kv.second); if(s > 0) dropped_alpha_rngs.emplace_back((long)s); }
+    for(auto& kv : shares_beta) { long long s = interpolate(kv.first, kv.second); if(s > 0) dropped_beta_rngs.emplace_back((long)s); }
+
+    std::vector<DeterministicRandom> ta_alpha_rngs, ta_beta_rngs;
     for (int i = 0; i < u1_len; ++i) {
-        if (2 + i < vector_len) {
-            beta_map[u1_ids[i]] = reconstructed_secrets[2 + i];
-        }
+        ta_alpha_rngs.emplace_back(CryptoUtils::derive_seed(kappa_m, "alpha", u1_ids[i] * 1000 + t));
+        ta_beta_rngs.emplace_back(CryptoUtils::derive_seed(kappa_m, "beta",  u1_ids[i] * 1000 + t));
     }
 
-    // Step 3: 准备消除噪声
-    long seed_M = (seed_global_0 + alpha_seed_rec) & 0x7FFFFFFF;
-    DeterministicRandom rng_M(seed_M);
-
-    std::vector<DeterministicRandom> rng_B_list;
-    for (int i = 0; i < u2_len; ++i) {
-        int online_uid = u2_ids[i];
-        if (beta_map.find(online_uid) != beta_map.end()) {
-            long long s_b_long = beta_map[online_uid];
-            rng_B_list.emplace_back((long)(s_b_long & 0x7FFFFFFF));
-        }
-    }
-
-    long long coeff_M = MathUtils::safe_mod_sub(1, delta);
-    LOG_DEBUG("[ServerCore] Coeff_M (1-Delta): %lld\n", coeff_M);
-
-    // Step 4: 流式聚合与消去
     for (int k = 0; k < data_len; ++k) {
-        // A. 生成噪声 N_k
-        long long val_M = rng_M.next_mask_mod();
-        long long term_M = MathUtils::safe_mod_mul(coeff_M, val_M);
+        long long sum_cipher = 0;
+        for(int i=0; i<u2_len; ++i) sum_cipher = MathUtils::safe_mod_add(sum_cipher, ciphers_flat[i * data_len + k]);
 
-        long long sum_B = 0;
-        for (auto& rng : rng_B_list) {
-            sum_B = MathUtils::safe_mod_add(sum_B, rng.next_mask_mod());
-        }
-        
-        long long noise_k = MathUtils::safe_mod_add(term_M, sum_B);
+        long long cur_S_alpha = 0; long long cur_S_beta  = 0;
+        for(auto& rng : ta_alpha_rngs) cur_S_alpha = MathUtils::safe_mod_add(cur_S_alpha, rng.next_mask_mod());
+        for(auto& rng : ta_beta_rngs)  cur_S_beta  = MathUtils::safe_mod_add(cur_S_beta,  rng.next_mask_mod());
 
-        // B. 累加密文 Sum(C_k)
-        long long sum_cipher_k = 0;
-        for(int i=0; i<u2_len; ++i) {
-            long long val = ciphers_flat[i * (size_t)data_len + k];
-            sum_cipher_k = MathUtils::safe_mod_add(sum_cipher_k, val);
-        }
+        for(auto& rng : dropped_alpha_rngs) cur_S_alpha = MathUtils::safe_mod_sub(cur_S_alpha, rng.next_mask_mod());
+        for(auto& rng : dropped_beta_rngs)  cur_S_beta  = MathUtils::safe_mod_sub(cur_S_beta,  rng.next_mask_mod());
 
-        // C. 消去: Result = Sum(C) - N
-        output_result[k] = MathUtils::safe_mod_sub(sum_cipher_k, noise_k);
-        if (k < 5) {
-            LOG_DEBUG("[ServerCore DEBUG] Aggregated Idx %d: ResultInt=%lld\n", k, output_result[k]);
+        long long active_self_sum = 0;
+        for(auto& rng : active_self_rngs) active_self_sum = MathUtils::safe_mod_add(active_self_sum, rng.next_mask_mod());
+
+        long long term_alpha = MathUtils::safe_mod_mul(cur_S_alpha, H_val);
+        long long noise = MathUtils::safe_mod_add(term_alpha, cur_S_beta);
+        noise = MathUtils::safe_mod_add(noise, active_self_sum);
+
+        // [核心修复]：由 C++ 在 int64 精度下完成完美减法和尺度还原
+        long long res = MathUtils::safe_mod_sub(sum_cipher, noise);
+        if (res > MOD / 2) {
+            res -= MOD;
         }
+        output_result[k] = (float)((double)res / SCALE);
     }
 }
-
-} // extern "C"
+}
