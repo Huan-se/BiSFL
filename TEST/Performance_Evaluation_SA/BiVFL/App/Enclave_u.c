@@ -1,71 +1,45 @@
 #include "Enclave_u.h"
 #include <errno.h>
 
-typedef struct ms_ecall_set_verbose_t {
-	int ms_level;
-} ms_ecall_set_verbose_t;
-
-typedef struct ms_ecall_ra_keygen_t {
-	uint8_t* ms_out_pub_key;
-	uint8_t* ms_out_quote;
-} ms_ecall_ra_keygen_t;
-
-typedef struct ms_ecall_ra_provision_seed_t {
-	uint8_t* ms_server_pub_key;
-	uint8_t* ms_cipher_payload;
-} ms_ecall_ra_provision_seed_t;
-
 typedef struct ms_ecall_prepare_gradient_t {
 	int ms_client_id;
-	const char* ms_proj_seed_str;
-	size_t ms_proj_seed_str_len;
-	float* ms_w_new;
-	float* ms_w_old;
-	size_t ms_model_len;
-	int* ms_ranges;
-	size_t ms_ranges_len;
-	float* ms_output_proj;
-	size_t ms_out_len;
+	int ms_proj_seed;
+	int ms_param_size;
+	const float* ms_w_new;
+	const float* ms_w_old_cache;
+	float* ms_out_proj;
 } ms_ecall_prepare_gradient_t;
 
-typedef struct ms_ecall_generate_masked_gradient_dynamic_t {
-	const char* ms_seed_mask_root_str;
-	size_t ms_seed_mask_root_str_len;
-	const char* ms_seed_global_0_str;
-	size_t ms_seed_global_0_str_len;
+typedef struct ms_ecall_generate_masked_gradient_sparse_t {
+	const char* ms_kappa_m_str;
+	size_t ms_kappa_m_str_len;
+	int ms_t;
+	const char* ms_model_hash_str;
+	size_t ms_model_hash_str_len;
 	int ms_client_id;
-	int* ms_active_ids;
-	size_t ms_active_count;
-	const char* ms_k_weight_str;
-	size_t ms_k_weight_str_len;
-	size_t ms_model_len;
-	int* ms_ranges;
-	size_t ms_ranges_len;
-	long long* ms_output;
-	size_t ms_out_len;
-} ms_ecall_generate_masked_gradient_dynamic_t;
+	const float* ms_w_new;
+	float ms_weight;
+	int ms_param_size;
+	int64_t* ms_out_masked_gradient;
+} ms_ecall_generate_masked_gradient_sparse_t;
 
-typedef struct ms_ecall_get_vector_shares_dynamic_t {
-	const char* ms_seed_sss_str;
-	size_t ms_seed_sss_str_len;
-	const char* ms_seed_mask_root_str;
-	size_t ms_seed_mask_root_str_len;
-	int* ms_u1_ids;
-	size_t ms_u1_len;
-	int* ms_u2_ids;
-	size_t ms_u2_len;
-	int ms_my_client_id;
+typedef struct ms_ecall_get_scalar_shares_sparse_t {
+	const char* ms_kappa_s_str;
+	size_t ms_kappa_s_str_len;
+	const char* ms_kappa_m_str;
+	size_t ms_kappa_m_str_len;
+	int ms_t;
+	const char* ms_view_hash_str;
+	size_t ms_view_hash_str_len;
+	int ms_client_id;
+	const int* ms_alive_neighbors;
+	int ms_num_alive;
+	const int* ms_dropped_neighbors;
+	int ms_num_dropped;
 	int ms_threshold;
-	long long* ms_output_vector;
-	size_t ms_out_max_len;
-} ms_ecall_get_vector_shares_dynamic_t;
-
-typedef struct ms_ecall_generate_noise_from_seed_t {
-	const char* ms_seed_str;
-	size_t ms_seed_str_len;
-	size_t ms_len;
-	long long* ms_output;
-} ms_ecall_generate_noise_from_seed_t;
+	int64_t* ms_out_shares;
+	size_t ms_max_len;
+} ms_ecall_get_scalar_shares_sparse_t;
 
 typedef struct ms_ocall_print_string_t {
 	const char* ms_str;
@@ -161,104 +135,58 @@ static const struct {
 		(void*)Enclave_sgx_thread_set_multiple_untrusted_events_ocall,
 	}
 };
-sgx_status_t ecall_set_verbose(sgx_enclave_id_t eid, int level)
-{
-	sgx_status_t status;
-	ms_ecall_set_verbose_t ms;
-	ms.ms_level = level;
-	status = sgx_ecall(eid, 0, &ocall_table_Enclave, &ms);
-	return status;
-}
-
-sgx_status_t ecall_ra_keygen(sgx_enclave_id_t eid, uint8_t* out_pub_key, uint8_t* out_quote)
-{
-	sgx_status_t status;
-	ms_ecall_ra_keygen_t ms;
-	ms.ms_out_pub_key = out_pub_key;
-	ms.ms_out_quote = out_quote;
-	status = sgx_ecall(eid, 1, &ocall_table_Enclave, &ms);
-	return status;
-}
-
-sgx_status_t ecall_ra_provision_seed(sgx_enclave_id_t eid, uint8_t* server_pub_key, uint8_t* cipher_payload)
-{
-	sgx_status_t status;
-	ms_ecall_ra_provision_seed_t ms;
-	ms.ms_server_pub_key = server_pub_key;
-	ms.ms_cipher_payload = cipher_payload;
-	status = sgx_ecall(eid, 2, &ocall_table_Enclave, &ms);
-	return status;
-}
-
-sgx_status_t ecall_prepare_gradient(sgx_enclave_id_t eid, int client_id, const char* proj_seed_str, float* w_new, float* w_old, size_t model_len, int* ranges, size_t ranges_len, float* output_proj, size_t out_len)
+sgx_status_t ecall_prepare_gradient(sgx_enclave_id_t eid, int client_id, int proj_seed, int param_size, const float* w_new, const float* w_old_cache, float* out_proj)
 {
 	sgx_status_t status;
 	ms_ecall_prepare_gradient_t ms;
 	ms.ms_client_id = client_id;
-	ms.ms_proj_seed_str = proj_seed_str;
-	ms.ms_proj_seed_str_len = proj_seed_str ? strlen(proj_seed_str) + 1 : 0;
+	ms.ms_proj_seed = proj_seed;
+	ms.ms_param_size = param_size;
 	ms.ms_w_new = w_new;
-	ms.ms_w_old = w_old;
-	ms.ms_model_len = model_len;
-	ms.ms_ranges = ranges;
-	ms.ms_ranges_len = ranges_len;
-	ms.ms_output_proj = output_proj;
-	ms.ms_out_len = out_len;
-	status = sgx_ecall(eid, 3, &ocall_table_Enclave, &ms);
+	ms.ms_w_old_cache = w_old_cache;
+	ms.ms_out_proj = out_proj;
+	status = sgx_ecall(eid, 0, &ocall_table_Enclave, &ms);
 	return status;
 }
 
-sgx_status_t ecall_generate_masked_gradient_dynamic(sgx_enclave_id_t eid, const char* seed_mask_root_str, const char* seed_global_0_str, int client_id, int* active_ids, size_t active_count, const char* k_weight_str, size_t model_len, int* ranges, size_t ranges_len, long long* output, size_t out_len)
+sgx_status_t ecall_generate_masked_gradient_sparse(sgx_enclave_id_t eid, const char* kappa_m_str, int t, const char* model_hash_str, int client_id, const float* w_new, float weight, int param_size, int64_t* out_masked_gradient)
 {
 	sgx_status_t status;
-	ms_ecall_generate_masked_gradient_dynamic_t ms;
-	ms.ms_seed_mask_root_str = seed_mask_root_str;
-	ms.ms_seed_mask_root_str_len = seed_mask_root_str ? strlen(seed_mask_root_str) + 1 : 0;
-	ms.ms_seed_global_0_str = seed_global_0_str;
-	ms.ms_seed_global_0_str_len = seed_global_0_str ? strlen(seed_global_0_str) + 1 : 0;
+	ms_ecall_generate_masked_gradient_sparse_t ms;
+	ms.ms_kappa_m_str = kappa_m_str;
+	ms.ms_kappa_m_str_len = kappa_m_str ? strlen(kappa_m_str) + 1 : 0;
+	ms.ms_t = t;
+	ms.ms_model_hash_str = model_hash_str;
+	ms.ms_model_hash_str_len = model_hash_str ? strlen(model_hash_str) + 1 : 0;
 	ms.ms_client_id = client_id;
-	ms.ms_active_ids = active_ids;
-	ms.ms_active_count = active_count;
-	ms.ms_k_weight_str = k_weight_str;
-	ms.ms_k_weight_str_len = k_weight_str ? strlen(k_weight_str) + 1 : 0;
-	ms.ms_model_len = model_len;
-	ms.ms_ranges = ranges;
-	ms.ms_ranges_len = ranges_len;
-	ms.ms_output = output;
-	ms.ms_out_len = out_len;
-	status = sgx_ecall(eid, 4, &ocall_table_Enclave, &ms);
+	ms.ms_w_new = w_new;
+	ms.ms_weight = weight;
+	ms.ms_param_size = param_size;
+	ms.ms_out_masked_gradient = out_masked_gradient;
+	status = sgx_ecall(eid, 1, &ocall_table_Enclave, &ms);
 	return status;
 }
 
-sgx_status_t ecall_get_vector_shares_dynamic(sgx_enclave_id_t eid, const char* seed_sss_str, const char* seed_mask_root_str, int* u1_ids, size_t u1_len, int* u2_ids, size_t u2_len, int my_client_id, int threshold, long long* output_vector, size_t out_max_len)
+sgx_status_t ecall_get_scalar_shares_sparse(sgx_enclave_id_t eid, const char* kappa_s_str, const char* kappa_m_str, int t, const char* view_hash_str, int client_id, const int* alive_neighbors, int num_alive, const int* dropped_neighbors, int num_dropped, int threshold, int64_t* out_shares, size_t max_len)
 {
 	sgx_status_t status;
-	ms_ecall_get_vector_shares_dynamic_t ms;
-	ms.ms_seed_sss_str = seed_sss_str;
-	ms.ms_seed_sss_str_len = seed_sss_str ? strlen(seed_sss_str) + 1 : 0;
-	ms.ms_seed_mask_root_str = seed_mask_root_str;
-	ms.ms_seed_mask_root_str_len = seed_mask_root_str ? strlen(seed_mask_root_str) + 1 : 0;
-	ms.ms_u1_ids = u1_ids;
-	ms.ms_u1_len = u1_len;
-	ms.ms_u2_ids = u2_ids;
-	ms.ms_u2_len = u2_len;
-	ms.ms_my_client_id = my_client_id;
+	ms_ecall_get_scalar_shares_sparse_t ms;
+	ms.ms_kappa_s_str = kappa_s_str;
+	ms.ms_kappa_s_str_len = kappa_s_str ? strlen(kappa_s_str) + 1 : 0;
+	ms.ms_kappa_m_str = kappa_m_str;
+	ms.ms_kappa_m_str_len = kappa_m_str ? strlen(kappa_m_str) + 1 : 0;
+	ms.ms_t = t;
+	ms.ms_view_hash_str = view_hash_str;
+	ms.ms_view_hash_str_len = view_hash_str ? strlen(view_hash_str) + 1 : 0;
+	ms.ms_client_id = client_id;
+	ms.ms_alive_neighbors = alive_neighbors;
+	ms.ms_num_alive = num_alive;
+	ms.ms_dropped_neighbors = dropped_neighbors;
+	ms.ms_num_dropped = num_dropped;
 	ms.ms_threshold = threshold;
-	ms.ms_output_vector = output_vector;
-	ms.ms_out_max_len = out_max_len;
-	status = sgx_ecall(eid, 5, &ocall_table_Enclave, &ms);
-	return status;
-}
-
-sgx_status_t ecall_generate_noise_from_seed(sgx_enclave_id_t eid, const char* seed_str, size_t len, long long* output)
-{
-	sgx_status_t status;
-	ms_ecall_generate_noise_from_seed_t ms;
-	ms.ms_seed_str = seed_str;
-	ms.ms_seed_str_len = seed_str ? strlen(seed_str) + 1 : 0;
-	ms.ms_len = len;
-	ms.ms_output = output;
-	status = sgx_ecall(eid, 6, &ocall_table_Enclave, &ms);
+	ms.ms_out_shares = out_shares;
+	ms.ms_max_len = max_len;
+	status = sgx_ecall(eid, 2, &ocall_table_Enclave, &ms);
 	return status;
 }
 

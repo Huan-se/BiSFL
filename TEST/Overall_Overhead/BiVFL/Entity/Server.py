@@ -137,25 +137,32 @@ class Server(object):
         try:
             reconstruct_tau = self._compute_tau(len(sorted_active_ids))
             
-            # 1. 安全聚合反量化可训练参数（权重和偏置）
+            # 1. 安全聚合反量化可训练参数
             result_float = self.server_adapter.aggregate_and_unmask(
                 sorted_active_ids, u2_ids, shares_list, final_ciphers, 
                 self.kappa_m, round_num, model_hash_str, reconstruct_tau
             )
             self._apply_global_update(result_float)
             
-            # 2. [核心修复] 明文同步 BatchNorm 的统计缓存
+            # 2. [精确修复] 明文同步 BatchNorm 的统计缓存，分离 Float 和 Long 处理
             with torch.no_grad():
                 for name, buffer in self.global_model.named_buffers():
-                    if 'running' in name or 'num_batches' in name:
+                    # 处理均值和方差 (Float)
+                    if 'running_mean' in name or 'running_var' in name:
                         buffer.zero_()
                         for cid in u2_ids:
                             client = next(c for c in client_objects if c.client_id == cid)
                             w = weights_map.get(cid, 0.0)
-                            # 获取客户端当前的 BN 状态并加权累加
                             client_buffer = client.model.state_dict()[name].to(self.device)
                             buffer.add_(client_buffer * w)
-                            
+                    # 处理追踪批次数量 (Long)，直接累加，不乘以浮点权重
+                    elif 'num_batches_tracked' in name:
+                        buffer.zero_()
+                        for cid in u2_ids:
+                            client = next(c for c in client_objects if c.client_id == cid)
+                            client_buffer = client.model.state_dict()[name].to(self.device)
+                            buffer.add_(client_buffer)
+
         except Exception as e: print(f"  [Critical Error] Aggregation crashed: {e}")
         t_agg_end = time.time()
         

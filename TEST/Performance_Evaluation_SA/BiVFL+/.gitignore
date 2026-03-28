@@ -1,8 +1,0 @@
-test_logic/
-data/
-proj/
-/Enclave/include/
-*.pt
-*.pth
-*.npz
-*.pyc

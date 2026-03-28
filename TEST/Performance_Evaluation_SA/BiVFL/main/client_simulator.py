@@ -25,13 +25,8 @@ class VirtualClient:
         self.sock = None
         self.w_old_cache = np.zeros(param_size, dtype=np.float32)
         self.w_new_cache = None
-        self.active_ids = []
         
         self.tee_adapter = get_tee_adapter_singleton()
-        
-        self.seed_mask_root = 0x12345678 
-        self.seed_global_0 = 0x87654321  
-        self.seed_sss = 0x11223344
 
     def run(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -56,11 +51,7 @@ class VirtualClient:
                         time.sleep(0.02) 
                         dummy_pub_key = os.urandom(64)
                         dummy_quote = os.urandom(4384)
-                        
-                    net.send_msg(self.sock, {
-                        "action": "RES_RATLS_QUOTE",
-                        "data": {"pub_key": dummy_pub_key, "quote": dummy_quote}
-                    })
+                    net.send_msg(self.sock, {"action": "RES_RATLS_QUOTE", "data": {"pub_key": dummy_pub_key, "quote": dummy_quote}})
 
                 elif action == "SYNC_SEEDS":
                     with sgx_semaphore:
@@ -73,12 +64,8 @@ class VirtualClient:
                     
                 elif action == "REQ_PROJ":
                     with sgx_semaphore:
-                        output, ranges = self.tee_adapter.prepare_gradient(
-                            self.client_id, 12345, self.w_new_cache, self.w_old_cache
-                        )
+                        output, ranges = self.tee_adapter.prepare_gradient(self.client_id, 12345, self.w_new_cache, self.w_old_cache)
                     self.w_old_cache = self.w_new_cache.copy()
-                    
-                    # [修复] 同样强制包装投影，消灭零散对象序列化膨胀
                     output_np = np.array(output, dtype=np.float32)
                     net.send_msg(self.sock, {"action": "RES_PROJ", "data": output_np})
                 
@@ -87,30 +74,33 @@ class VirtualClient:
                     net.send_msg(self.sock, {"action": "RES_SKIP_PROJ"})
                     
                 elif action == "REQ_CIPHER":
-                    u1_ids = msg.get("u1_ids")
+                    # [精准保留 O(1) 密文传输请求] 不再需要发送庞大的 active_neighbors
                     assigned_weight = msg.get("weight", 0.0)
+                    kappa_m_str = msg.get("kappa_m", "0")
+                    t = msg.get("t", 1)
+                    model_hash_str = msg.get("model_hash", "0")
                     
                     with sgx_semaphore:
-                        c_grad = self.tee_adapter.generate_masked_gradient_dynamic(
-                            self.seed_mask_root, self.seed_global_0, 
-                            self.client_id, u1_ids, 
-                            assigned_weight, self.param_size
+                        c_grad = self.tee_adapter.generate_masked_gradient_sparse(
+                            kappa_m_str, t, model_hash_str, self.client_id, self.w_new_cache, assigned_weight, self.param_size
                         )
-                        
-                    # [核心修复] 将 C++ 返回的特征强制转换为紧凑的 int64 C-数组，与 SecAgg 严格对齐数据结构
                     c_grad_np = np.array(c_grad, dtype=np.int64)
-                    
                     net.send_msg(self.sock, {"action": "RES_CIPHER", "data": c_grad_np})
                     
                 elif action == "REQ_SHARES":
-                    u1_ids = msg.get("u1_ids")
-                    u2_ids = msg.get("u2_ids")
-                    threshold = len(u1_ids) // 2 + 1
+                    # [精准保留 O(log N) SSS传输请求] 仅接受邻居状态
+                    alive_neighbors = msg.get("alive_neighbors", [])
+                    dropped_neighbors = msg.get("dropped_neighbors", [])
+                    threshold = msg.get("threshold", 3)
+                    kappa_s_str = msg.get("kappa_s", "0")
+                    kappa_m_str = msg.get("kappa_m", "0")
+                    t = msg.get("t", 1)
+                    view_hash_str = msg.get("view_hash", "0")
+                    
                     with sgx_semaphore:
-                        shares = self.tee_adapter.get_vector_shares_dynamic(
-                            self.seed_sss, self.seed_mask_root, 
-                            u1_ids, u2_ids, 
-                            self.client_id, threshold
+                        shares = self.tee_adapter.get_scalar_shares_sparse(
+                            kappa_s_str, kappa_m_str, t, view_hash_str, self.client_id, 
+                            alive_neighbors, dropped_neighbors, threshold
                         )
                     net.send_msg(self.sock, {"action": "RES_SHARES", "data": shares})
 

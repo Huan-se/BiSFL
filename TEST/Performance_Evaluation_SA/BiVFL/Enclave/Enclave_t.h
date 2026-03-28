@@ -6,8 +6,6 @@
 #include <stddef.h>
 #include "sgx_edger8r.h" /* for sgx_ocall etc. */
 
-#include "sgx_key_exchange.h"
-#include "sgx_tcrypto.h"
 
 #include <stdlib.h> /* for size_t */
 
@@ -17,13 +15,9 @@
 extern "C" {
 #endif
 
-void ecall_set_verbose(int level);
-void ecall_ra_keygen(uint8_t* out_pub_key, uint8_t* out_quote);
-void ecall_ra_provision_seed(uint8_t* server_pub_key, uint8_t* cipher_payload);
-void ecall_prepare_gradient(int client_id, const char* proj_seed_str, float* w_new, float* w_old, size_t model_len, int* ranges, size_t ranges_len, float* output_proj, size_t out_len);
-void ecall_generate_masked_gradient_dynamic(const char* seed_mask_root_str, const char* seed_global_0_str, int client_id, int* active_ids, size_t active_count, const char* k_weight_str, size_t model_len, int* ranges, size_t ranges_len, long long* output, size_t out_len);
-void ecall_get_vector_shares_dynamic(const char* seed_sss_str, const char* seed_mask_root_str, int* u1_ids, size_t u1_len, int* u2_ids, size_t u2_len, int my_client_id, int threshold, long long* output_vector, size_t out_max_len);
-void ecall_generate_noise_from_seed(const char* seed_str, size_t len, long long* output);
+void ecall_prepare_gradient(int client_id, int proj_seed, int param_size, const float* w_new, const float* w_old_cache, float* out_proj);
+void ecall_generate_masked_gradient_sparse(const char* kappa_m_str, int t, const char* model_hash_str, int client_id, const float* w_new, float weight, int param_size, int64_t* out_masked_gradient);
+void ecall_get_scalar_shares_sparse(const char* kappa_s_str, const char* kappa_m_str, int t, const char* view_hash_str, int client_id, const int* alive_neighbors, int num_alive, const int* dropped_neighbors, int num_dropped, int threshold, int64_t* out_shares, size_t max_len);
 
 sgx_status_t SGX_CDECL ocall_print_string(const char* str);
 sgx_status_t SGX_CDECL sgx_oc_cpuidex(int cpuinfo[4], int leaf, int subleaf);

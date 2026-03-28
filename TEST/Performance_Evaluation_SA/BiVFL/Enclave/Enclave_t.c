@@ -27,71 +27,45 @@
 )
 
 
-typedef struct ms_ecall_set_verbose_t {
-	int ms_level;
-} ms_ecall_set_verbose_t;
-
-typedef struct ms_ecall_ra_keygen_t {
-	uint8_t* ms_out_pub_key;
-	uint8_t* ms_out_quote;
-} ms_ecall_ra_keygen_t;
-
-typedef struct ms_ecall_ra_provision_seed_t {
-	uint8_t* ms_server_pub_key;
-	uint8_t* ms_cipher_payload;
-} ms_ecall_ra_provision_seed_t;
-
 typedef struct ms_ecall_prepare_gradient_t {
 	int ms_client_id;
-	const char* ms_proj_seed_str;
-	size_t ms_proj_seed_str_len;
-	float* ms_w_new;
-	float* ms_w_old;
-	size_t ms_model_len;
-	int* ms_ranges;
-	size_t ms_ranges_len;
-	float* ms_output_proj;
-	size_t ms_out_len;
+	int ms_proj_seed;
+	int ms_param_size;
+	const float* ms_w_new;
+	const float* ms_w_old_cache;
+	float* ms_out_proj;
 } ms_ecall_prepare_gradient_t;
 
-typedef struct ms_ecall_generate_masked_gradient_dynamic_t {
-	const char* ms_seed_mask_root_str;
-	size_t ms_seed_mask_root_str_len;
-	const char* ms_seed_global_0_str;
-	size_t ms_seed_global_0_str_len;
+typedef struct ms_ecall_generate_masked_gradient_sparse_t {
+	const char* ms_kappa_m_str;
+	size_t ms_kappa_m_str_len;
+	int ms_t;
+	const char* ms_model_hash_str;
+	size_t ms_model_hash_str_len;
 	int ms_client_id;
-	int* ms_active_ids;
-	size_t ms_active_count;
-	const char* ms_k_weight_str;
-	size_t ms_k_weight_str_len;
-	size_t ms_model_len;
-	int* ms_ranges;
-	size_t ms_ranges_len;
-	long long* ms_output;
-	size_t ms_out_len;
-} ms_ecall_generate_masked_gradient_dynamic_t;
+	const float* ms_w_new;
+	float ms_weight;
+	int ms_param_size;
+	int64_t* ms_out_masked_gradient;
+} ms_ecall_generate_masked_gradient_sparse_t;
 
-typedef struct ms_ecall_get_vector_shares_dynamic_t {
-	const char* ms_seed_sss_str;
-	size_t ms_seed_sss_str_len;
-	const char* ms_seed_mask_root_str;
-	size_t ms_seed_mask_root_str_len;
-	int* ms_u1_ids;
-	size_t ms_u1_len;
-	int* ms_u2_ids;
-	size_t ms_u2_len;
-	int ms_my_client_id;
+typedef struct ms_ecall_get_scalar_shares_sparse_t {
+	const char* ms_kappa_s_str;
+	size_t ms_kappa_s_str_len;
+	const char* ms_kappa_m_str;
+	size_t ms_kappa_m_str_len;
+	int ms_t;
+	const char* ms_view_hash_str;
+	size_t ms_view_hash_str_len;
+	int ms_client_id;
+	const int* ms_alive_neighbors;
+	int ms_num_alive;
+	const int* ms_dropped_neighbors;
+	int ms_num_dropped;
 	int ms_threshold;
-	long long* ms_output_vector;
-	size_t ms_out_max_len;
-} ms_ecall_get_vector_shares_dynamic_t;
-
-typedef struct ms_ecall_generate_noise_from_seed_t {
-	const char* ms_seed_str;
-	size_t ms_seed_str_len;
-	size_t ms_len;
-	long long* ms_output;
-} ms_ecall_generate_noise_from_seed_t;
+	int64_t* ms_out_shares;
+	size_t ms_max_len;
+} ms_ecall_get_scalar_shares_sparse_t;
 
 typedef struct ms_ocall_print_string_t {
 	const char* ms_str;
@@ -125,164 +99,6 @@ typedef struct ms_sgx_thread_set_multiple_untrusted_events_ocall_t {
 	size_t ms_total;
 } ms_sgx_thread_set_multiple_untrusted_events_ocall_t;
 
-static sgx_status_t SGX_CDECL sgx_ecall_set_verbose(void* pms)
-{
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_set_verbose_t));
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-	ms_ecall_set_verbose_t* ms = SGX_CAST(ms_ecall_set_verbose_t*, pms);
-	sgx_status_t status = SGX_SUCCESS;
-
-
-
-	ecall_set_verbose(ms->ms_level);
-
-
-	return status;
-}
-
-static sgx_status_t SGX_CDECL sgx_ecall_ra_keygen(void* pms)
-{
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_ra_keygen_t));
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-	ms_ecall_ra_keygen_t* ms = SGX_CAST(ms_ecall_ra_keygen_t*, pms);
-	sgx_status_t status = SGX_SUCCESS;
-	uint8_t* _tmp_out_pub_key = ms->ms_out_pub_key;
-	size_t _len_out_pub_key = 64;
-	uint8_t* _in_out_pub_key = NULL;
-	uint8_t* _tmp_out_quote = ms->ms_out_quote;
-	size_t _len_out_quote = 4384;
-	uint8_t* _in_out_quote = NULL;
-
-	CHECK_UNIQUE_POINTER(_tmp_out_pub_key, _len_out_pub_key);
-	CHECK_UNIQUE_POINTER(_tmp_out_quote, _len_out_quote);
-
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-
-	if (_tmp_out_pub_key != NULL && _len_out_pub_key != 0) {
-		if ( _len_out_pub_key % sizeof(*_tmp_out_pub_key) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		if ((_in_out_pub_key = (uint8_t*)malloc(_len_out_pub_key)) == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		memset((void*)_in_out_pub_key, 0, _len_out_pub_key);
-	}
-	if (_tmp_out_quote != NULL && _len_out_quote != 0) {
-		if ( _len_out_quote % sizeof(*_tmp_out_quote) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		if ((_in_out_quote = (uint8_t*)malloc(_len_out_quote)) == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		memset((void*)_in_out_quote, 0, _len_out_quote);
-	}
-
-	ecall_ra_keygen(_in_out_pub_key, _in_out_quote);
-	if (_in_out_pub_key) {
-		if (memcpy_s(_tmp_out_pub_key, _len_out_pub_key, _in_out_pub_key, _len_out_pub_key)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-	if (_in_out_quote) {
-		if (memcpy_s(_tmp_out_quote, _len_out_quote, _in_out_quote, _len_out_quote)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-
-err:
-	if (_in_out_pub_key) free(_in_out_pub_key);
-	if (_in_out_quote) free(_in_out_quote);
-	return status;
-}
-
-static sgx_status_t SGX_CDECL sgx_ecall_ra_provision_seed(void* pms)
-{
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_ra_provision_seed_t));
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-	ms_ecall_ra_provision_seed_t* ms = SGX_CAST(ms_ecall_ra_provision_seed_t*, pms);
-	sgx_status_t status = SGX_SUCCESS;
-	uint8_t* _tmp_server_pub_key = ms->ms_server_pub_key;
-	size_t _len_server_pub_key = 64;
-	uint8_t* _in_server_pub_key = NULL;
-	uint8_t* _tmp_cipher_payload = ms->ms_cipher_payload;
-	size_t _len_cipher_payload = 128;
-	uint8_t* _in_cipher_payload = NULL;
-
-	CHECK_UNIQUE_POINTER(_tmp_server_pub_key, _len_server_pub_key);
-	CHECK_UNIQUE_POINTER(_tmp_cipher_payload, _len_cipher_payload);
-
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-
-	if (_tmp_server_pub_key != NULL && _len_server_pub_key != 0) {
-		if ( _len_server_pub_key % sizeof(*_tmp_server_pub_key) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		_in_server_pub_key = (uint8_t*)malloc(_len_server_pub_key);
-		if (_in_server_pub_key == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_server_pub_key, _len_server_pub_key, _tmp_server_pub_key, _len_server_pub_key)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-	}
-	if (_tmp_cipher_payload != NULL && _len_cipher_payload != 0) {
-		if ( _len_cipher_payload % sizeof(*_tmp_cipher_payload) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		_in_cipher_payload = (uint8_t*)malloc(_len_cipher_payload);
-		if (_in_cipher_payload == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_cipher_payload, _len_cipher_payload, _tmp_cipher_payload, _len_cipher_payload)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-	}
-
-	ecall_ra_provision_seed(_in_server_pub_key, _in_cipher_payload);
-
-err:
-	if (_in_server_pub_key) free(_in_server_pub_key);
-	if (_in_cipher_payload) free(_in_cipher_payload);
-	return status;
-}
-
 static sgx_status_t SGX_CDECL sgx_ecall_prepare_gradient(void* pms)
 {
 	CHECK_REF_POINTER(pms, sizeof(ms_ecall_prepare_gradient_t));
@@ -292,70 +108,182 @@ static sgx_status_t SGX_CDECL sgx_ecall_prepare_gradient(void* pms)
 	sgx_lfence();
 	ms_ecall_prepare_gradient_t* ms = SGX_CAST(ms_ecall_prepare_gradient_t*, pms);
 	sgx_status_t status = SGX_SUCCESS;
-	const char* _tmp_proj_seed_str = ms->ms_proj_seed_str;
-	size_t _len_proj_seed_str = ms->ms_proj_seed_str_len ;
-	char* _in_proj_seed_str = NULL;
-	float* _tmp_w_new = ms->ms_w_new;
-	size_t _tmp_model_len = ms->ms_model_len;
-	size_t _len_w_new = _tmp_model_len * sizeof(float);
+	const float* _tmp_w_new = ms->ms_w_new;
+	int _tmp_param_size = ms->ms_param_size;
+	size_t _len_w_new = _tmp_param_size * sizeof(float);
 	float* _in_w_new = NULL;
-	float* _tmp_w_old = ms->ms_w_old;
-	size_t _len_w_old = _tmp_model_len * sizeof(float);
-	float* _in_w_old = NULL;
-	int* _tmp_ranges = ms->ms_ranges;
-	size_t _tmp_ranges_len = ms->ms_ranges_len;
-	size_t _len_ranges = _tmp_ranges_len * sizeof(int);
-	int* _in_ranges = NULL;
-	float* _tmp_output_proj = ms->ms_output_proj;
-	size_t _tmp_out_len = ms->ms_out_len;
-	size_t _len_output_proj = _tmp_out_len * sizeof(float);
-	float* _in_output_proj = NULL;
+	const float* _tmp_w_old_cache = ms->ms_w_old_cache;
+	size_t _len_w_old_cache = _tmp_param_size * sizeof(float);
+	float* _in_w_old_cache = NULL;
+	float* _tmp_out_proj = ms->ms_out_proj;
+	size_t _len_out_proj = 1024 * sizeof(float);
+	float* _in_out_proj = NULL;
 
 	if (sizeof(*_tmp_w_new) != 0 &&
-		(size_t)_tmp_model_len > (SIZE_MAX / sizeof(*_tmp_w_new))) {
+		(size_t)_tmp_param_size > (SIZE_MAX / sizeof(*_tmp_w_new))) {
 		return SGX_ERROR_INVALID_PARAMETER;
 	}
 
-	if (sizeof(*_tmp_w_old) != 0 &&
-		(size_t)_tmp_model_len > (SIZE_MAX / sizeof(*_tmp_w_old))) {
+	if (sizeof(*_tmp_w_old_cache) != 0 &&
+		(size_t)_tmp_param_size > (SIZE_MAX / sizeof(*_tmp_w_old_cache))) {
 		return SGX_ERROR_INVALID_PARAMETER;
 	}
 
-	if (sizeof(*_tmp_ranges) != 0 &&
-		(size_t)_tmp_ranges_len > (SIZE_MAX / sizeof(*_tmp_ranges))) {
+	if (sizeof(*_tmp_out_proj) != 0 &&
+		1024 > (SIZE_MAX / sizeof(*_tmp_out_proj))) {
 		return SGX_ERROR_INVALID_PARAMETER;
 	}
 
-	if (sizeof(*_tmp_output_proj) != 0 &&
-		(size_t)_tmp_out_len > (SIZE_MAX / sizeof(*_tmp_output_proj))) {
-		return SGX_ERROR_INVALID_PARAMETER;
-	}
-
-	CHECK_UNIQUE_POINTER(_tmp_proj_seed_str, _len_proj_seed_str);
 	CHECK_UNIQUE_POINTER(_tmp_w_new, _len_w_new);
-	CHECK_UNIQUE_POINTER(_tmp_w_old, _len_w_old);
-	CHECK_UNIQUE_POINTER(_tmp_ranges, _len_ranges);
-	CHECK_UNIQUE_POINTER(_tmp_output_proj, _len_output_proj);
+	CHECK_UNIQUE_POINTER(_tmp_w_old_cache, _len_w_old_cache);
+	CHECK_UNIQUE_POINTER(_tmp_out_proj, _len_out_proj);
 
 	//
 	// fence after pointer checks
 	//
 	sgx_lfence();
 
-	if (_tmp_proj_seed_str != NULL && _len_proj_seed_str != 0) {
-		_in_proj_seed_str = (char*)malloc(_len_proj_seed_str);
-		if (_in_proj_seed_str == NULL) {
+	if (_tmp_w_new != NULL && _len_w_new != 0) {
+		if ( _len_w_new % sizeof(*_tmp_w_new) != 0)
+		{
+			status = SGX_ERROR_INVALID_PARAMETER;
+			goto err;
+		}
+		_in_w_new = (float*)malloc(_len_w_new);
+		if (_in_w_new == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
 
-		if (memcpy_s(_in_proj_seed_str, _len_proj_seed_str, _tmp_proj_seed_str, _len_proj_seed_str)) {
+		if (memcpy_s(_in_w_new, _len_w_new, _tmp_w_new, _len_w_new)) {
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 
-		_in_proj_seed_str[_len_proj_seed_str - 1] = '\0';
-		if (_len_proj_seed_str != strlen(_in_proj_seed_str) + 1)
+	}
+	if (_tmp_w_old_cache != NULL && _len_w_old_cache != 0) {
+		if ( _len_w_old_cache % sizeof(*_tmp_w_old_cache) != 0)
+		{
+			status = SGX_ERROR_INVALID_PARAMETER;
+			goto err;
+		}
+		_in_w_old_cache = (float*)malloc(_len_w_old_cache);
+		if (_in_w_old_cache == NULL) {
+			status = SGX_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+
+		if (memcpy_s(_in_w_old_cache, _len_w_old_cache, _tmp_w_old_cache, _len_w_old_cache)) {
+			status = SGX_ERROR_UNEXPECTED;
+			goto err;
+		}
+
+	}
+	if (_tmp_out_proj != NULL && _len_out_proj != 0) {
+		if ( _len_out_proj % sizeof(*_tmp_out_proj) != 0)
+		{
+			status = SGX_ERROR_INVALID_PARAMETER;
+			goto err;
+		}
+		if ((_in_out_proj = (float*)malloc(_len_out_proj)) == NULL) {
+			status = SGX_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+
+		memset((void*)_in_out_proj, 0, _len_out_proj);
+	}
+
+	ecall_prepare_gradient(ms->ms_client_id, ms->ms_proj_seed, _tmp_param_size, (const float*)_in_w_new, (const float*)_in_w_old_cache, _in_out_proj);
+	if (_in_out_proj) {
+		if (memcpy_s(_tmp_out_proj, _len_out_proj, _in_out_proj, _len_out_proj)) {
+			status = SGX_ERROR_UNEXPECTED;
+			goto err;
+		}
+	}
+
+err:
+	if (_in_w_new) free(_in_w_new);
+	if (_in_w_old_cache) free(_in_w_old_cache);
+	if (_in_out_proj) free(_in_out_proj);
+	return status;
+}
+
+static sgx_status_t SGX_CDECL sgx_ecall_generate_masked_gradient_sparse(void* pms)
+{
+	CHECK_REF_POINTER(pms, sizeof(ms_ecall_generate_masked_gradient_sparse_t));
+	//
+	// fence after pointer checks
+	//
+	sgx_lfence();
+	ms_ecall_generate_masked_gradient_sparse_t* ms = SGX_CAST(ms_ecall_generate_masked_gradient_sparse_t*, pms);
+	sgx_status_t status = SGX_SUCCESS;
+	const char* _tmp_kappa_m_str = ms->ms_kappa_m_str;
+	size_t _len_kappa_m_str = ms->ms_kappa_m_str_len ;
+	char* _in_kappa_m_str = NULL;
+	const char* _tmp_model_hash_str = ms->ms_model_hash_str;
+	size_t _len_model_hash_str = ms->ms_model_hash_str_len ;
+	char* _in_model_hash_str = NULL;
+	const float* _tmp_w_new = ms->ms_w_new;
+	int _tmp_param_size = ms->ms_param_size;
+	size_t _len_w_new = _tmp_param_size * sizeof(float);
+	float* _in_w_new = NULL;
+	int64_t* _tmp_out_masked_gradient = ms->ms_out_masked_gradient;
+	size_t _len_out_masked_gradient = _tmp_param_size * sizeof(int64_t);
+	int64_t* _in_out_masked_gradient = NULL;
+
+	if (sizeof(*_tmp_w_new) != 0 &&
+		(size_t)_tmp_param_size > (SIZE_MAX / sizeof(*_tmp_w_new))) {
+		return SGX_ERROR_INVALID_PARAMETER;
+	}
+
+	if (sizeof(*_tmp_out_masked_gradient) != 0 &&
+		(size_t)_tmp_param_size > (SIZE_MAX / sizeof(*_tmp_out_masked_gradient))) {
+		return SGX_ERROR_INVALID_PARAMETER;
+	}
+
+	CHECK_UNIQUE_POINTER(_tmp_kappa_m_str, _len_kappa_m_str);
+	CHECK_UNIQUE_POINTER(_tmp_model_hash_str, _len_model_hash_str);
+	CHECK_UNIQUE_POINTER(_tmp_w_new, _len_w_new);
+	CHECK_UNIQUE_POINTER(_tmp_out_masked_gradient, _len_out_masked_gradient);
+
+	//
+	// fence after pointer checks
+	//
+	sgx_lfence();
+
+	if (_tmp_kappa_m_str != NULL && _len_kappa_m_str != 0) {
+		_in_kappa_m_str = (char*)malloc(_len_kappa_m_str);
+		if (_in_kappa_m_str == NULL) {
+			status = SGX_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+
+		if (memcpy_s(_in_kappa_m_str, _len_kappa_m_str, _tmp_kappa_m_str, _len_kappa_m_str)) {
+			status = SGX_ERROR_UNEXPECTED;
+			goto err;
+		}
+
+		_in_kappa_m_str[_len_kappa_m_str - 1] = '\0';
+		if (_len_kappa_m_str != strlen(_in_kappa_m_str) + 1)
+		{
+			status = SGX_ERROR_UNEXPECTED;
+			goto err;
+		}
+	}
+	if (_tmp_model_hash_str != NULL && _len_model_hash_str != 0) {
+		_in_model_hash_str = (char*)malloc(_len_model_hash_str);
+		if (_in_model_hash_str == NULL) {
+			status = SGX_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+
+		if (memcpy_s(_in_model_hash_str, _len_model_hash_str, _tmp_model_hash_str, _len_model_hash_str)) {
+			status = SGX_ERROR_UNEXPECTED;
+			goto err;
+		}
+
+		_in_model_hash_str[_len_model_hash_str - 1] = '\0';
+		if (_len_model_hash_str != strlen(_in_model_hash_str) + 1)
 		{
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
@@ -379,520 +307,243 @@ static sgx_status_t SGX_CDECL sgx_ecall_prepare_gradient(void* pms)
 		}
 
 	}
-	if (_tmp_w_old != NULL && _len_w_old != 0) {
-		if ( _len_w_old % sizeof(*_tmp_w_old) != 0)
+	if (_tmp_out_masked_gradient != NULL && _len_out_masked_gradient != 0) {
+		if ( _len_out_masked_gradient % sizeof(*_tmp_out_masked_gradient) != 0)
 		{
 			status = SGX_ERROR_INVALID_PARAMETER;
 			goto err;
 		}
-		_in_w_old = (float*)malloc(_len_w_old);
-		if (_in_w_old == NULL) {
+		if ((_in_out_masked_gradient = (int64_t*)malloc(_len_out_masked_gradient)) == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
 
-		if (memcpy_s(_in_w_old, _len_w_old, _tmp_w_old, _len_w_old)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-	}
-	if (_tmp_ranges != NULL && _len_ranges != 0) {
-		if ( _len_ranges % sizeof(*_tmp_ranges) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		_in_ranges = (int*)malloc(_len_ranges);
-		if (_in_ranges == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_ranges, _len_ranges, _tmp_ranges, _len_ranges)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-	}
-	if (_tmp_output_proj != NULL && _len_output_proj != 0) {
-		if ( _len_output_proj % sizeof(*_tmp_output_proj) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		if ((_in_output_proj = (float*)malloc(_len_output_proj)) == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		memset((void*)_in_output_proj, 0, _len_output_proj);
+		memset((void*)_in_out_masked_gradient, 0, _len_out_masked_gradient);
 	}
 
-	ecall_prepare_gradient(ms->ms_client_id, (const char*)_in_proj_seed_str, _in_w_new, _in_w_old, _tmp_model_len, _in_ranges, _tmp_ranges_len, _in_output_proj, _tmp_out_len);
-	if (_in_output_proj) {
-		if (memcpy_s(_tmp_output_proj, _len_output_proj, _in_output_proj, _len_output_proj)) {
+	ecall_generate_masked_gradient_sparse((const char*)_in_kappa_m_str, ms->ms_t, (const char*)_in_model_hash_str, ms->ms_client_id, (const float*)_in_w_new, ms->ms_weight, _tmp_param_size, _in_out_masked_gradient);
+	if (_in_out_masked_gradient) {
+		if (memcpy_s(_tmp_out_masked_gradient, _len_out_masked_gradient, _in_out_masked_gradient, _len_out_masked_gradient)) {
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 	}
 
 err:
-	if (_in_proj_seed_str) free(_in_proj_seed_str);
+	if (_in_kappa_m_str) free(_in_kappa_m_str);
+	if (_in_model_hash_str) free(_in_model_hash_str);
 	if (_in_w_new) free(_in_w_new);
-	if (_in_w_old) free(_in_w_old);
-	if (_in_ranges) free(_in_ranges);
-	if (_in_output_proj) free(_in_output_proj);
+	if (_in_out_masked_gradient) free(_in_out_masked_gradient);
 	return status;
 }
 
-static sgx_status_t SGX_CDECL sgx_ecall_generate_masked_gradient_dynamic(void* pms)
+static sgx_status_t SGX_CDECL sgx_ecall_get_scalar_shares_sparse(void* pms)
 {
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_generate_masked_gradient_dynamic_t));
+	CHECK_REF_POINTER(pms, sizeof(ms_ecall_get_scalar_shares_sparse_t));
 	//
 	// fence after pointer checks
 	//
 	sgx_lfence();
-	ms_ecall_generate_masked_gradient_dynamic_t* ms = SGX_CAST(ms_ecall_generate_masked_gradient_dynamic_t*, pms);
+	ms_ecall_get_scalar_shares_sparse_t* ms = SGX_CAST(ms_ecall_get_scalar_shares_sparse_t*, pms);
 	sgx_status_t status = SGX_SUCCESS;
-	const char* _tmp_seed_mask_root_str = ms->ms_seed_mask_root_str;
-	size_t _len_seed_mask_root_str = ms->ms_seed_mask_root_str_len ;
-	char* _in_seed_mask_root_str = NULL;
-	const char* _tmp_seed_global_0_str = ms->ms_seed_global_0_str;
-	size_t _len_seed_global_0_str = ms->ms_seed_global_0_str_len ;
-	char* _in_seed_global_0_str = NULL;
-	int* _tmp_active_ids = ms->ms_active_ids;
-	size_t _tmp_active_count = ms->ms_active_count;
-	size_t _len_active_ids = _tmp_active_count * sizeof(int);
-	int* _in_active_ids = NULL;
-	const char* _tmp_k_weight_str = ms->ms_k_weight_str;
-	size_t _len_k_weight_str = ms->ms_k_weight_str_len ;
-	char* _in_k_weight_str = NULL;
-	int* _tmp_ranges = ms->ms_ranges;
-	size_t _tmp_ranges_len = ms->ms_ranges_len;
-	size_t _len_ranges = _tmp_ranges_len * sizeof(int);
-	int* _in_ranges = NULL;
-	long long* _tmp_output = ms->ms_output;
-	size_t _tmp_out_len = ms->ms_out_len;
-	size_t _len_output = _tmp_out_len * sizeof(long long);
-	long long* _in_output = NULL;
+	const char* _tmp_kappa_s_str = ms->ms_kappa_s_str;
+	size_t _len_kappa_s_str = ms->ms_kappa_s_str_len ;
+	char* _in_kappa_s_str = NULL;
+	const char* _tmp_kappa_m_str = ms->ms_kappa_m_str;
+	size_t _len_kappa_m_str = ms->ms_kappa_m_str_len ;
+	char* _in_kappa_m_str = NULL;
+	const char* _tmp_view_hash_str = ms->ms_view_hash_str;
+	size_t _len_view_hash_str = ms->ms_view_hash_str_len ;
+	char* _in_view_hash_str = NULL;
+	const int* _tmp_alive_neighbors = ms->ms_alive_neighbors;
+	int _tmp_num_alive = ms->ms_num_alive;
+	size_t _len_alive_neighbors = _tmp_num_alive * sizeof(int);
+	int* _in_alive_neighbors = NULL;
+	const int* _tmp_dropped_neighbors = ms->ms_dropped_neighbors;
+	int _tmp_num_dropped = ms->ms_num_dropped;
+	size_t _len_dropped_neighbors = _tmp_num_dropped * sizeof(int);
+	int* _in_dropped_neighbors = NULL;
+	int64_t* _tmp_out_shares = ms->ms_out_shares;
+	size_t _tmp_max_len = ms->ms_max_len;
+	size_t _len_out_shares = _tmp_max_len * sizeof(int64_t);
+	int64_t* _in_out_shares = NULL;
 
-	if (sizeof(*_tmp_active_ids) != 0 &&
-		(size_t)_tmp_active_count > (SIZE_MAX / sizeof(*_tmp_active_ids))) {
+	if (sizeof(*_tmp_alive_neighbors) != 0 &&
+		(size_t)_tmp_num_alive > (SIZE_MAX / sizeof(*_tmp_alive_neighbors))) {
 		return SGX_ERROR_INVALID_PARAMETER;
 	}
 
-	if (sizeof(*_tmp_ranges) != 0 &&
-		(size_t)_tmp_ranges_len > (SIZE_MAX / sizeof(*_tmp_ranges))) {
+	if (sizeof(*_tmp_dropped_neighbors) != 0 &&
+		(size_t)_tmp_num_dropped > (SIZE_MAX / sizeof(*_tmp_dropped_neighbors))) {
 		return SGX_ERROR_INVALID_PARAMETER;
 	}
 
-	if (sizeof(*_tmp_output) != 0 &&
-		(size_t)_tmp_out_len > (SIZE_MAX / sizeof(*_tmp_output))) {
+	if (sizeof(*_tmp_out_shares) != 0 &&
+		(size_t)_tmp_max_len > (SIZE_MAX / sizeof(*_tmp_out_shares))) {
 		return SGX_ERROR_INVALID_PARAMETER;
 	}
 
-	CHECK_UNIQUE_POINTER(_tmp_seed_mask_root_str, _len_seed_mask_root_str);
-	CHECK_UNIQUE_POINTER(_tmp_seed_global_0_str, _len_seed_global_0_str);
-	CHECK_UNIQUE_POINTER(_tmp_active_ids, _len_active_ids);
-	CHECK_UNIQUE_POINTER(_tmp_k_weight_str, _len_k_weight_str);
-	CHECK_UNIQUE_POINTER(_tmp_ranges, _len_ranges);
-	CHECK_UNIQUE_POINTER(_tmp_output, _len_output);
+	CHECK_UNIQUE_POINTER(_tmp_kappa_s_str, _len_kappa_s_str);
+	CHECK_UNIQUE_POINTER(_tmp_kappa_m_str, _len_kappa_m_str);
+	CHECK_UNIQUE_POINTER(_tmp_view_hash_str, _len_view_hash_str);
+	CHECK_UNIQUE_POINTER(_tmp_alive_neighbors, _len_alive_neighbors);
+	CHECK_UNIQUE_POINTER(_tmp_dropped_neighbors, _len_dropped_neighbors);
+	CHECK_UNIQUE_POINTER(_tmp_out_shares, _len_out_shares);
 
 	//
 	// fence after pointer checks
 	//
 	sgx_lfence();
 
-	if (_tmp_seed_mask_root_str != NULL && _len_seed_mask_root_str != 0) {
-		_in_seed_mask_root_str = (char*)malloc(_len_seed_mask_root_str);
-		if (_in_seed_mask_root_str == NULL) {
+	if (_tmp_kappa_s_str != NULL && _len_kappa_s_str != 0) {
+		_in_kappa_s_str = (char*)malloc(_len_kappa_s_str);
+		if (_in_kappa_s_str == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
 
-		if (memcpy_s(_in_seed_mask_root_str, _len_seed_mask_root_str, _tmp_seed_mask_root_str, _len_seed_mask_root_str)) {
+		if (memcpy_s(_in_kappa_s_str, _len_kappa_s_str, _tmp_kappa_s_str, _len_kappa_s_str)) {
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 
-		_in_seed_mask_root_str[_len_seed_mask_root_str - 1] = '\0';
-		if (_len_seed_mask_root_str != strlen(_in_seed_mask_root_str) + 1)
+		_in_kappa_s_str[_len_kappa_s_str - 1] = '\0';
+		if (_len_kappa_s_str != strlen(_in_kappa_s_str) + 1)
 		{
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 	}
-	if (_tmp_seed_global_0_str != NULL && _len_seed_global_0_str != 0) {
-		_in_seed_global_0_str = (char*)malloc(_len_seed_global_0_str);
-		if (_in_seed_global_0_str == NULL) {
+	if (_tmp_kappa_m_str != NULL && _len_kappa_m_str != 0) {
+		_in_kappa_m_str = (char*)malloc(_len_kappa_m_str);
+		if (_in_kappa_m_str == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
 
-		if (memcpy_s(_in_seed_global_0_str, _len_seed_global_0_str, _tmp_seed_global_0_str, _len_seed_global_0_str)) {
+		if (memcpy_s(_in_kappa_m_str, _len_kappa_m_str, _tmp_kappa_m_str, _len_kappa_m_str)) {
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 
-		_in_seed_global_0_str[_len_seed_global_0_str - 1] = '\0';
-		if (_len_seed_global_0_str != strlen(_in_seed_global_0_str) + 1)
+		_in_kappa_m_str[_len_kappa_m_str - 1] = '\0';
+		if (_len_kappa_m_str != strlen(_in_kappa_m_str) + 1)
 		{
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 	}
-	if (_tmp_active_ids != NULL && _len_active_ids != 0) {
-		if ( _len_active_ids % sizeof(*_tmp_active_ids) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		_in_active_ids = (int*)malloc(_len_active_ids);
-		if (_in_active_ids == NULL) {
+	if (_tmp_view_hash_str != NULL && _len_view_hash_str != 0) {
+		_in_view_hash_str = (char*)malloc(_len_view_hash_str);
+		if (_in_view_hash_str == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
 
-		if (memcpy_s(_in_active_ids, _len_active_ids, _tmp_active_ids, _len_active_ids)) {
+		if (memcpy_s(_in_view_hash_str, _len_view_hash_str, _tmp_view_hash_str, _len_view_hash_str)) {
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 
-	}
-	if (_tmp_k_weight_str != NULL && _len_k_weight_str != 0) {
-		_in_k_weight_str = (char*)malloc(_len_k_weight_str);
-		if (_in_k_weight_str == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_k_weight_str, _len_k_weight_str, _tmp_k_weight_str, _len_k_weight_str)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-		_in_k_weight_str[_len_k_weight_str - 1] = '\0';
-		if (_len_k_weight_str != strlen(_in_k_weight_str) + 1)
+		_in_view_hash_str[_len_view_hash_str - 1] = '\0';
+		if (_len_view_hash_str != strlen(_in_view_hash_str) + 1)
 		{
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 	}
-	if (_tmp_ranges != NULL && _len_ranges != 0) {
-		if ( _len_ranges % sizeof(*_tmp_ranges) != 0)
+	if (_tmp_alive_neighbors != NULL && _len_alive_neighbors != 0) {
+		if ( _len_alive_neighbors % sizeof(*_tmp_alive_neighbors) != 0)
 		{
 			status = SGX_ERROR_INVALID_PARAMETER;
 			goto err;
 		}
-		_in_ranges = (int*)malloc(_len_ranges);
-		if (_in_ranges == NULL) {
+		_in_alive_neighbors = (int*)malloc(_len_alive_neighbors);
+		if (_in_alive_neighbors == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
 
-		if (memcpy_s(_in_ranges, _len_ranges, _tmp_ranges, _len_ranges)) {
+		if (memcpy_s(_in_alive_neighbors, _len_alive_neighbors, _tmp_alive_neighbors, _len_alive_neighbors)) {
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 
 	}
-	if (_tmp_output != NULL && _len_output != 0) {
-		if ( _len_output % sizeof(*_tmp_output) != 0)
+	if (_tmp_dropped_neighbors != NULL && _len_dropped_neighbors != 0) {
+		if ( _len_dropped_neighbors % sizeof(*_tmp_dropped_neighbors) != 0)
 		{
 			status = SGX_ERROR_INVALID_PARAMETER;
 			goto err;
 		}
-		if ((_in_output = (long long*)malloc(_len_output)) == NULL) {
+		_in_dropped_neighbors = (int*)malloc(_len_dropped_neighbors);
+		if (_in_dropped_neighbors == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
 
-		memset((void*)_in_output, 0, _len_output);
+		if (memcpy_s(_in_dropped_neighbors, _len_dropped_neighbors, _tmp_dropped_neighbors, _len_dropped_neighbors)) {
+			status = SGX_ERROR_UNEXPECTED;
+			goto err;
+		}
+
+	}
+	if (_tmp_out_shares != NULL && _len_out_shares != 0) {
+		if ( _len_out_shares % sizeof(*_tmp_out_shares) != 0)
+		{
+			status = SGX_ERROR_INVALID_PARAMETER;
+			goto err;
+		}
+		if ((_in_out_shares = (int64_t*)malloc(_len_out_shares)) == NULL) {
+			status = SGX_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+
+		memset((void*)_in_out_shares, 0, _len_out_shares);
 	}
 
-	ecall_generate_masked_gradient_dynamic((const char*)_in_seed_mask_root_str, (const char*)_in_seed_global_0_str, ms->ms_client_id, _in_active_ids, _tmp_active_count, (const char*)_in_k_weight_str, ms->ms_model_len, _in_ranges, _tmp_ranges_len, _in_output, _tmp_out_len);
-	if (_in_output) {
-		if (memcpy_s(_tmp_output, _len_output, _in_output, _len_output)) {
+	ecall_get_scalar_shares_sparse((const char*)_in_kappa_s_str, (const char*)_in_kappa_m_str, ms->ms_t, (const char*)_in_view_hash_str, ms->ms_client_id, (const int*)_in_alive_neighbors, _tmp_num_alive, (const int*)_in_dropped_neighbors, _tmp_num_dropped, ms->ms_threshold, _in_out_shares, _tmp_max_len);
+	if (_in_out_shares) {
+		if (memcpy_s(_tmp_out_shares, _len_out_shares, _in_out_shares, _len_out_shares)) {
 			status = SGX_ERROR_UNEXPECTED;
 			goto err;
 		}
 	}
 
 err:
-	if (_in_seed_mask_root_str) free(_in_seed_mask_root_str);
-	if (_in_seed_global_0_str) free(_in_seed_global_0_str);
-	if (_in_active_ids) free(_in_active_ids);
-	if (_in_k_weight_str) free(_in_k_weight_str);
-	if (_in_ranges) free(_in_ranges);
-	if (_in_output) free(_in_output);
-	return status;
-}
-
-static sgx_status_t SGX_CDECL sgx_ecall_get_vector_shares_dynamic(void* pms)
-{
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_get_vector_shares_dynamic_t));
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-	ms_ecall_get_vector_shares_dynamic_t* ms = SGX_CAST(ms_ecall_get_vector_shares_dynamic_t*, pms);
-	sgx_status_t status = SGX_SUCCESS;
-	const char* _tmp_seed_sss_str = ms->ms_seed_sss_str;
-	size_t _len_seed_sss_str = ms->ms_seed_sss_str_len ;
-	char* _in_seed_sss_str = NULL;
-	const char* _tmp_seed_mask_root_str = ms->ms_seed_mask_root_str;
-	size_t _len_seed_mask_root_str = ms->ms_seed_mask_root_str_len ;
-	char* _in_seed_mask_root_str = NULL;
-	int* _tmp_u1_ids = ms->ms_u1_ids;
-	size_t _tmp_u1_len = ms->ms_u1_len;
-	size_t _len_u1_ids = _tmp_u1_len * sizeof(int);
-	int* _in_u1_ids = NULL;
-	int* _tmp_u2_ids = ms->ms_u2_ids;
-	size_t _tmp_u2_len = ms->ms_u2_len;
-	size_t _len_u2_ids = _tmp_u2_len * sizeof(int);
-	int* _in_u2_ids = NULL;
-	long long* _tmp_output_vector = ms->ms_output_vector;
-	size_t _tmp_out_max_len = ms->ms_out_max_len;
-	size_t _len_output_vector = _tmp_out_max_len * sizeof(long long);
-	long long* _in_output_vector = NULL;
-
-	if (sizeof(*_tmp_u1_ids) != 0 &&
-		(size_t)_tmp_u1_len > (SIZE_MAX / sizeof(*_tmp_u1_ids))) {
-		return SGX_ERROR_INVALID_PARAMETER;
-	}
-
-	if (sizeof(*_tmp_u2_ids) != 0 &&
-		(size_t)_tmp_u2_len > (SIZE_MAX / sizeof(*_tmp_u2_ids))) {
-		return SGX_ERROR_INVALID_PARAMETER;
-	}
-
-	if (sizeof(*_tmp_output_vector) != 0 &&
-		(size_t)_tmp_out_max_len > (SIZE_MAX / sizeof(*_tmp_output_vector))) {
-		return SGX_ERROR_INVALID_PARAMETER;
-	}
-
-	CHECK_UNIQUE_POINTER(_tmp_seed_sss_str, _len_seed_sss_str);
-	CHECK_UNIQUE_POINTER(_tmp_seed_mask_root_str, _len_seed_mask_root_str);
-	CHECK_UNIQUE_POINTER(_tmp_u1_ids, _len_u1_ids);
-	CHECK_UNIQUE_POINTER(_tmp_u2_ids, _len_u2_ids);
-	CHECK_UNIQUE_POINTER(_tmp_output_vector, _len_output_vector);
-
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-
-	if (_tmp_seed_sss_str != NULL && _len_seed_sss_str != 0) {
-		_in_seed_sss_str = (char*)malloc(_len_seed_sss_str);
-		if (_in_seed_sss_str == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_seed_sss_str, _len_seed_sss_str, _tmp_seed_sss_str, _len_seed_sss_str)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-		_in_seed_sss_str[_len_seed_sss_str - 1] = '\0';
-		if (_len_seed_sss_str != strlen(_in_seed_sss_str) + 1)
-		{
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-	if (_tmp_seed_mask_root_str != NULL && _len_seed_mask_root_str != 0) {
-		_in_seed_mask_root_str = (char*)malloc(_len_seed_mask_root_str);
-		if (_in_seed_mask_root_str == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_seed_mask_root_str, _len_seed_mask_root_str, _tmp_seed_mask_root_str, _len_seed_mask_root_str)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-		_in_seed_mask_root_str[_len_seed_mask_root_str - 1] = '\0';
-		if (_len_seed_mask_root_str != strlen(_in_seed_mask_root_str) + 1)
-		{
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-	if (_tmp_u1_ids != NULL && _len_u1_ids != 0) {
-		if ( _len_u1_ids % sizeof(*_tmp_u1_ids) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		_in_u1_ids = (int*)malloc(_len_u1_ids);
-		if (_in_u1_ids == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_u1_ids, _len_u1_ids, _tmp_u1_ids, _len_u1_ids)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-	}
-	if (_tmp_u2_ids != NULL && _len_u2_ids != 0) {
-		if ( _len_u2_ids % sizeof(*_tmp_u2_ids) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		_in_u2_ids = (int*)malloc(_len_u2_ids);
-		if (_in_u2_ids == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_u2_ids, _len_u2_ids, _tmp_u2_ids, _len_u2_ids)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-	}
-	if (_tmp_output_vector != NULL && _len_output_vector != 0) {
-		if ( _len_output_vector % sizeof(*_tmp_output_vector) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		if ((_in_output_vector = (long long*)malloc(_len_output_vector)) == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		memset((void*)_in_output_vector, 0, _len_output_vector);
-	}
-
-	ecall_get_vector_shares_dynamic((const char*)_in_seed_sss_str, (const char*)_in_seed_mask_root_str, _in_u1_ids, _tmp_u1_len, _in_u2_ids, _tmp_u2_len, ms->ms_my_client_id, ms->ms_threshold, _in_output_vector, _tmp_out_max_len);
-	if (_in_output_vector) {
-		if (memcpy_s(_tmp_output_vector, _len_output_vector, _in_output_vector, _len_output_vector)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-
-err:
-	if (_in_seed_sss_str) free(_in_seed_sss_str);
-	if (_in_seed_mask_root_str) free(_in_seed_mask_root_str);
-	if (_in_u1_ids) free(_in_u1_ids);
-	if (_in_u2_ids) free(_in_u2_ids);
-	if (_in_output_vector) free(_in_output_vector);
-	return status;
-}
-
-static sgx_status_t SGX_CDECL sgx_ecall_generate_noise_from_seed(void* pms)
-{
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_generate_noise_from_seed_t));
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-	ms_ecall_generate_noise_from_seed_t* ms = SGX_CAST(ms_ecall_generate_noise_from_seed_t*, pms);
-	sgx_status_t status = SGX_SUCCESS;
-	const char* _tmp_seed_str = ms->ms_seed_str;
-	size_t _len_seed_str = ms->ms_seed_str_len ;
-	char* _in_seed_str = NULL;
-	long long* _tmp_output = ms->ms_output;
-	size_t _tmp_len = ms->ms_len;
-	size_t _len_output = _tmp_len * sizeof(long long);
-	long long* _in_output = NULL;
-
-	if (sizeof(*_tmp_output) != 0 &&
-		(size_t)_tmp_len > (SIZE_MAX / sizeof(*_tmp_output))) {
-		return SGX_ERROR_INVALID_PARAMETER;
-	}
-
-	CHECK_UNIQUE_POINTER(_tmp_seed_str, _len_seed_str);
-	CHECK_UNIQUE_POINTER(_tmp_output, _len_output);
-
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-
-	if (_tmp_seed_str != NULL && _len_seed_str != 0) {
-		_in_seed_str = (char*)malloc(_len_seed_str);
-		if (_in_seed_str == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_seed_str, _len_seed_str, _tmp_seed_str, _len_seed_str)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-		_in_seed_str[_len_seed_str - 1] = '\0';
-		if (_len_seed_str != strlen(_in_seed_str) + 1)
-		{
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-	if (_tmp_output != NULL && _len_output != 0) {
-		if ( _len_output % sizeof(*_tmp_output) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		if ((_in_output = (long long*)malloc(_len_output)) == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		memset((void*)_in_output, 0, _len_output);
-	}
-
-	ecall_generate_noise_from_seed((const char*)_in_seed_str, _tmp_len, _in_output);
-	if (_in_output) {
-		if (memcpy_s(_tmp_output, _len_output, _in_output, _len_output)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-
-err:
-	if (_in_seed_str) free(_in_seed_str);
-	if (_in_output) free(_in_output);
+	if (_in_kappa_s_str) free(_in_kappa_s_str);
+	if (_in_kappa_m_str) free(_in_kappa_m_str);
+	if (_in_view_hash_str) free(_in_view_hash_str);
+	if (_in_alive_neighbors) free(_in_alive_neighbors);
+	if (_in_dropped_neighbors) free(_in_dropped_neighbors);
+	if (_in_out_shares) free(_in_out_shares);
 	return status;
 }
 
 SGX_EXTERNC const struct {
 	size_t nr_ecall;
-	struct {void* ecall_addr; uint8_t is_priv; uint8_t is_switchless;} ecall_table[7];
+	struct {void* ecall_addr; uint8_t is_priv; uint8_t is_switchless;} ecall_table[3];
 } g_ecall_table = {
-	7,
+	3,
 	{
-		{(void*)(uintptr_t)sgx_ecall_set_verbose, 0, 0},
-		{(void*)(uintptr_t)sgx_ecall_ra_keygen, 0, 0},
-		{(void*)(uintptr_t)sgx_ecall_ra_provision_seed, 0, 0},
 		{(void*)(uintptr_t)sgx_ecall_prepare_gradient, 0, 0},
-		{(void*)(uintptr_t)sgx_ecall_generate_masked_gradient_dynamic, 0, 0},
-		{(void*)(uintptr_t)sgx_ecall_get_vector_shares_dynamic, 0, 0},
-		{(void*)(uintptr_t)sgx_ecall_generate_noise_from_seed, 0, 0},
+		{(void*)(uintptr_t)sgx_ecall_generate_masked_gradient_sparse, 0, 0},
+		{(void*)(uintptr_t)sgx_ecall_get_scalar_shares_sparse, 0, 0},
 	}
 };
 
 SGX_EXTERNC const struct {
 	size_t nr_ocall;
-	uint8_t entry_table[6][7];
+	uint8_t entry_table[6][3];
 } g_dyn_entry_table = {
 	6,
 	{
-		{0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, },
+		{0, 0, 0, },
+		{0, 0, 0, },
+		{0, 0, 0, },
+		{0, 0, 0, },
+		{0, 0, 0, },
 	}
 };
 
