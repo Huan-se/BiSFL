@@ -31,7 +31,7 @@ sudo sysctl -w net.ipv4.tcp_tw_reuse=1      2>/dev/null || true
 sudo sysctl -w net.ipv4.ip_local_port_range="1024 65535" 2>/dev/null || true
 
 # ── 实验参数定义 ──────────────────────────────────────────────────────────────
-SCHEMES=("BiVFL+")   # 可追加 "SecAgg" "SecAgg+" "BiVFL" "BatchCrypt"
+SCHEMES=("BiVFL")   # 可追加 "SecAgg" "SecAgg+" "BiVFL" "BatchCrypt"
 
 # Dropout 率列表（百分比整数，传给 --drop_rate 时除以100）
 DROPOUT_RATES=(0 10 20 30)

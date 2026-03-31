@@ -1,0 +1,72 @@
+/* Enclave/Enclave.edl */
+enclave {
+    from "sgx_tstdc.edl" import *;
+    include "sgx_key_exchange.h"
+    include "sgx_tcrypto.h"
+    
+    trusted {
+        public void ecall_set_verbose(int level);
+        
+        public void ecall_ra_keygen(
+            [out, size=64] uint8_t* out_pub_key, 
+            [out, size=4384] uint8_t* out_quote
+        );
+        
+        public void ecall_ra_provision_seed(
+            [in, size=64] uint8_t* server_pub_key, 
+            [in, size=128] uint8_t* cipher_payload
+        );
+        
+        /* Phase 2: Prepare Gradient */
+        public void ecall_prepare_gradient(
+            int client_id,
+            [in, string] const char* proj_seed_str,
+            [in, count=model_len] float* w_new,
+            [in, count=model_len] float* w_old,
+            size_t model_len,
+            [in, count=ranges_len] int* ranges,
+            size_t ranges_len,
+            [out, count=out_len] float* output_proj,
+            size_t out_len
+        );
+
+        /* Phase 4: Generate Masked Gradient (更新为新接口) */
+        public void ecall_generate_masked_gradient_dynamic(
+            [in, string] const char* kappa_m_str,
+            int t,
+            [in, string] const char* model_hash_str,
+            int client_id,
+            [in, count=u1_len] int* u1_ids,
+            size_t u1_len,
+            [in, string] const char* k_weight_str,
+            size_t model_len,
+            [in, count=ranges_len] int* ranges,
+            size_t ranges_len,
+            [out, count=out_len] long long* output,
+            size_t out_len
+        );
+
+        /* Phase 5: Get Shares (更新为新接口) */
+        public void ecall_get_vector_shares_dynamic(
+            [in, string] const char* kappa_s_str,
+            [in, string] const char* kappa_m_str,
+            int t,
+            [in, count=u1_len] int* u1_ids, size_t u1_len,
+            [in, count=u2_len] int* u2_ids, size_t u2_len,
+            int my_id,
+            [out, count=max_len] long long* output_vector,
+            size_t max_len
+        );
+
+        /* Noise Generation */
+        public void ecall_generate_noise_from_seed(
+            [in, string] const char* seed_str,
+            size_t len,
+            [out, count=len] long long* output
+        );
+    };
+
+    untrusted {
+        void ocall_print_string([in, string] const char *str);
+    };
+};

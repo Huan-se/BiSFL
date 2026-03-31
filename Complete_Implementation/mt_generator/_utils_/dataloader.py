@@ -46,31 +46,6 @@ def load_dataset(dataset_name, data_dir="./data"):
 
     return train_dataset, test_dataset
 
-def split_fixed_size(dataset, num_clients, batch_size, client_data_size):
-    """
-    [新增] 定量数据划分：为每个客户端分配固定大小的数据集
-    （允许数据重复，专用于模拟特定数据量下的训练耗时）
-    """
-    total_size = len(dataset)
-    
-    # 确保设定的客户端数据量不超过总数据集大小
-    actual_size = min(client_data_size, total_size)
-    if client_data_size > total_size:
-        print(f"Warning: 设定的 client_data_size ({client_data_size}) 大于数据集总大小 ({total_size})。已自动截断为全量数据集大小。")
-
-    client_dataloaders = []
-    for i in range(num_clients):
-        # 为每个客户端独立、随机地抽取 actual_size 个样本的索引
-        # replace=False 表示客户端内部的数据不重复
-        indices = np.random.choice(total_size, actual_size, replace=False).tolist()
-        
-        subset = Subset(dataset, indices)
-        client_dataloaders.append(
-            DataLoader(subset, batch_size=batch_size, shuffle=True)
-        )
-
-    return client_dataloaders
-
 def split_iid(dataset, num_clients, batch_size):
     """IID数据划分"""
     total_size = len(dataset)
@@ -89,7 +64,9 @@ def split_iid(dataset, num_clients, batch_size):
     # 创建数据加载器
     client_dataloaders = []
     for indices in client_indices:
+        # 确保数据量不小于批次大小
         if len(indices) < batch_size:
+            # 如果数据不够一个batch，简单复制填充（边缘情况）
             while len(indices) < batch_size:
                 indices.extend(indices[:min(len(indices), batch_size - len(indices))])
         
@@ -107,6 +84,7 @@ def split_noniid(dataset, num_clients, batch_size, dataset_name, alpha=0.1):
     elif dataset_name == "cifar10":
         targets = np.array(dataset.targets)
     else:
+        # 尝试通用获取
         targets = np.array(dataset.targets)
 
     classes = np.unique(targets)
@@ -114,7 +92,9 @@ def split_noniid(dataset, num_clients, batch_size, dataset_name, alpha=0.1):
     class_indices = {c: np.where(targets == c)[0] for c in classes}
 
     for c in classes:
+        # 为每个类别生成Dirichlet分布的客户端分配权重
         dirichlet_weights = np.random.dirichlet(np.ones(num_clients) * alpha)
+        # 归一化并计算划分点
         dirichlet_weights = dirichlet_weights / dirichlet_weights.sum()
         class_size = len(class_indices[c])
         
@@ -124,11 +104,16 @@ def split_noniid(dataset, num_clients, batch_size, dataset_name, alpha=0.1):
         for i, idx in enumerate(client_split):
             client_indices[i].extend(idx.tolist())
 
+    # 创建数据加载器
     client_dataloaders = []
     for indices in client_indices:
+        # 混洗当前客户端的索引
         np.random.shuffle(indices)
+        
+        # 确保数据量不小于批次大小
         if len(indices) < batch_size:
              if len(indices) == 0:
+                 # 极端Non-IID可能导致某客户端无数据，防止报错分配少量随机数据
                  print(f"Warning: Client has no data for Non-IID alpha={alpha}. Assigning random sample.")
                  indices = np.random.choice(len(dataset), batch_size).tolist()
              else:
@@ -142,7 +127,7 @@ def split_noniid(dataset, num_clients, batch_size, dataset_name, alpha=0.1):
 
     return client_dataloaders
 
-def load_and_split_dataset(dataset_name, num_clients, batch_size, if_noniid=True, alpha=0.1, data_dir="./main/data", client_data_size=None):
+def load_and_split_dataset(dataset_name, num_clients, batch_size, if_noniid=True, alpha=0.1, data_dir="./main/data"):
     """
     统一接口：加载并划分数据集
 
@@ -153,19 +138,16 @@ def load_and_split_dataset(dataset_name, num_clients, batch_size, if_noniid=True
         if_noniid: 是否使用Non-IID划分
         alpha: Dirichlet分布参数（仅Non-IID时有效）
         data_dir: 数据存储路径
-        client_data_size: [新增] 如果提供此参数，将无视IID/Non-IID设定，直接为每个客户端分配指定数量的样本。
+
+    返回:
+        client_dataloaders: 客户端数据加载器列表
+        test_loader: 测试集数据加载器
     """
     # 加载原始数据集
     train_dataset, test_dataset = load_dataset(dataset_name, data_dir)
 
     # 划分训练集
-    if client_data_size is not None:
-        # [新增逻辑]：如果传入了具体的定量数据大小，走专门的独立抽样逻辑
-        print(f"  [Data] Allocating fixed size dataset: {client_data_size} samples per client (Overlap allowed).")
-        client_dataloaders = split_fixed_size(
-            train_dataset, num_clients, batch_size, client_data_size
-        )
-    elif if_noniid:
+    if if_noniid:
         print(f"  [Data] Splitting {dataset_name} Non-IID (alpha={alpha})...")
         client_dataloaders = split_noniid(
             train_dataset, num_clients, batch_size, dataset_name, alpha

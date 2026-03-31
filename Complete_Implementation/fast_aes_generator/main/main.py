@@ -76,20 +76,14 @@ def run_single_mode(full_config, mode_name, current_mode_config):
     
     detection_method = current_mode_config.get('defense_method', 'none')
 
-    # [核心修改 1]: 从 current_mode_config 提取 client_data_size (如果存在)
-    client_data_size = current_mode_config.get('client_data_size', None)
-
     print(f"  [Init] Loading dataset {data_conf['dataset']}...")
-    
-    # [核心修改 2]: 将 client_data_size 传递给数据加载器
     all_client_dataloaders, test_loader = load_and_split_dataset(
         dataset_name=data_conf['dataset'],
         num_clients=fed_conf['total_clients'],
         batch_size=fed_conf['batch_size'],
         if_noniid=data_conf['if_noniid'],
         alpha=data_conf['alpha'],
-        data_dir="./data",
-        client_data_size=client_data_size
+        data_dir="./data"
     )
     
     model_name = data_conf.get('model', '').lower()
@@ -181,6 +175,7 @@ def run_single_mode(full_config, mode_name, current_mode_config):
     total_time_detect = 0.0
     total_time_secagg = 0.0
     
+    # [新增] 初始化单客户端的通信量统计变量 (MB)
     total_comm_down_mb = 0.0
     total_comm_up_proj_mb = 0.0
     total_comm_up_model_mb = 0.0
@@ -198,6 +193,7 @@ def run_single_mode(full_config, mode_name, current_mode_config):
         global_params, _ = server.get_global_params_and_proj()
         current_proj_seed = int(seed + r)
         
+        # 计算单客户端下发模型的通信量 (下行)
         round_down_mb = get_obj_size_mb(global_params)
         total_comm_down_mb += round_down_mb
         
@@ -206,19 +202,11 @@ def run_single_mode(full_config, mode_name, current_mode_config):
         # Phase 1: Local Training
         log(f"  [Phase 1] Starting Local Training (Device: {device_str})...")
         t_p1_start = time.time()
-        
-        # [可选额外统计]: 记录单次最长物理并发时间
-        max_client_train_time = 0.0
-        
         for cid in active_ids:
-            client_t = clients[cid].phase1_local_train()
-            if client_t > max_client_train_time:
-                max_client_train_time = client_t
-                
+            clients[cid].phase1_local_train()
         t_p1_cost = time.time() - t_p1_start
         total_time_train += t_p1_cost
-        
-        log(f"  >> Serial Training Phase Finished in {t_p1_cost:.2f}s (Max concurrent: {max_client_train_time:.4f}s)")
+        log(f"  >> Training Phase Finished in {t_p1_cost:.2f}s")
 
         # Phase 2: TEE Projection Extraction
         log(f"  [Phase 2] Starting TEE Projection...")
@@ -231,6 +219,7 @@ def run_single_mode(full_config, mode_name, current_mode_config):
             client_features_list.append(feat)
             client_data_sizes.append(dsize)
             
+        # 计算单客户端上传 TEE 投影的通信量 (上行)
         round_up_proj_mb = get_obj_size_mb(client_features_list[0]) if client_features_list else 0.0
         total_comm_up_proj_mb += round_up_proj_mb
             
@@ -255,9 +244,13 @@ def run_single_mode(full_config, mode_name, current_mode_config):
         t_p4_start = time.time()
         server.secure_aggregation(clients, accepted_ids, round_num=r)
         
+        # [修复] 补全 SecAgg 中 Cipher Upload 和 Share Upload 的精确开销
+        # 1. Cipher Upload: 加扰后的模型上传（张量加掩码不改变物理大小）
         round_up_model_mb = round_down_mb 
         total_comm_up_model_mb += round_up_model_mb
         
+        # 2. Share Upload: 密钥碎片上传
+        # 标准 SecAgg 中，客户端需向被接受的其他节点广播 Share (估算单份 64 Bytes 包含 256-bit 掩码与头信息)
         num_accepted = len(accepted_ids)
         round_up_share_mb = (num_accepted * 64) / (1024 * 1024) if num_accepted > 0 else 0.0
         total_comm_up_share_mb += round_up_share_mb
@@ -280,6 +273,7 @@ def run_single_mode(full_config, mode_name, current_mode_config):
             asr_history.append(0.0)
             
         print(f"  [Time Stats] Train: {t_p1_cost:.2f}s | Proj: {t_p2_cost:.2f}s | Detect: {t_p3_cost:.2f}s | SecAgg: {t_p4_cost:.2f}s")
+        # 打印包含 Share 的综合本轮通信量
         print(f"  [Comm Stats] Downlink: {round_down_mb:.4f} MB | Uplink(Proj): {round_up_proj_mb:.4f} MB | Uplink(Cipher): {round_up_model_mb:.4f} MB | Uplink(Share): {round_up_share_mb:.6f} MB")
 
     total_pipeline_time = total_time_train + total_time_proj + total_time_detect + total_time_secagg
@@ -296,6 +290,7 @@ def run_single_mode(full_config, mode_name, current_mode_config):
     print(f" ✨ Projection Detection Overhead: {projection_defense_total:.2f} s ({(projection_defense_total/total_pipeline_time)*100:.2f}%)")
     print("="*50 + "\n")
 
+    # 最终通信量统计报告打印
     total_comm_up_mb = total_comm_up_proj_mb + total_comm_up_model_mb + total_comm_up_share_mb
     total_comm_mb = total_comm_down_mb + total_comm_up_mb
     
@@ -309,8 +304,7 @@ def run_single_mode(full_config, mode_name, current_mode_config):
     print(f"  └─ Secret Share Uplink         : {total_comm_up_share_mb:.6f} MB")
     print("-" * 50)
     print(f" ✨ Total Comm per Client        : {total_comm_mb:.4f} MB")
-    if total_comm_mb > 0:
-        print(f" ✨ Projection Payload Ratio     : {(total_comm_up_proj_mb/total_comm_mb)*100:.2f}%")
+    print(f" ✨ Projection Payload Ratio     : {(total_comm_up_proj_mb/total_comm_mb)*100:.2f}%")
     print("="*50 + "\n")
 
     print("[Saving] Saving final results...")
@@ -327,16 +321,10 @@ def run_single_mode(full_config, mode_name, current_mode_config):
     )
     print(f"[Done] Mode {mode_name} Finished.")
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='../config/config.yaml')
     parser.add_argument('--mode', type=str, default=None, help='指定只运行某个模式(逗号分隔)')
-    
-    # [核心修改 3]: 引入命令行参数控制 client_data_size
-    parser.add_argument('--client_data_size', type=int, default=None, 
-                        help='如果指定，无视 IID 切分，为每个客户端分配固定数量的随机样本 (仅用于 Benchmark 时间测算)')
-    
     args = parser.parse_args()
     
     config = load_config(args.config)
@@ -360,10 +348,6 @@ def main():
         'model_type': config['data']['model'],
         'dataset_type': config['data']['dataset']
     }
-    
-    # [核心修改 4]: 把命令行中的 client_data_size 塞进基准配置里，传给每一个 mode
-    if args.client_data_size is not None:
-        base_flat_config['client_data_size'] = args.client_data_size
     
     default_poison_ratio = config['attack']['poison_ratio']
     default_defense = config['defense']['method']
@@ -396,7 +380,6 @@ def main():
 
     for mode in modes_to_run:
         run_single_mode(config, mode['name'], mode['mode_config'])
-
 
 if __name__ == '__main__':
     main()
