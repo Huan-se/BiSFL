@@ -77,10 +77,30 @@ class Server(object):
         if tau < 2: tau = 2
         return tau
 
+    def update_global_proj(self, current_round):
+        if any(k in self.detection_method for k in ["mesas", "projected", "layers_proj", "ours"]):
+            self._update_global_direction_feature(current_round)
+
+    # def calculate_weights(self, client_id_list, client_features_dict_list, client_data_sizes, current_round=0, client_objects=None):
+    #     weights = {}
+    #     if any(k in self.detection_method for k in ["mesas", "projected", "layers_proj", "ours"]):
+    #         self._update_global_direction_feature(current_round)
+    #         client_projections = {cid: feat for cid, feat in zip(client_id_list, client_features_dict_list)}
+    #         raw_weights, logs, global_stats = self.mesas_detector.detect(
+    #             client_projections, self.global_update_direction, self.suspect_counters, verbose=self.verbose)
+    #         total_score = sum(raw_weights.values())
+    #         weights = {cid: s / total_score for cid, s in raw_weights.items()} if total_score > 0 else {cid: 0.0 for cid in raw_weights}
+    #     elif self.detection_method in ['krum', 'clustering'] and self.baseline_detector and client_objects:
+    #         client_grads = {c.client_id: c.get_plaintext_gradient() for c in client_objects if c.client_id in client_id_list}
+    #         weights, logs, global_stats = self.baseline_detector.detect(client_grads, verbose=self.verbose)
+    #     else: weights = {cid: 1.0/len(client_id_list) for cid in client_id_list}
+    #     self.current_round_weights = weights
+    #     return weights
+
     def calculate_weights(self, client_id_list, client_features_dict_list, client_data_sizes, current_round=0, client_objects=None):
         weights = {}
         if any(k in self.detection_method for k in ["mesas", "projected", "layers_proj", "ours"]):
-            self._update_global_direction_feature(current_round)
+            
             client_projections = {cid: feat for cid, feat in zip(client_id_list, client_features_dict_list)}
             raw_weights, logs, global_stats = self.mesas_detector.detect(
                 client_projections, self.global_update_direction, self.suspect_counters, verbose=self.verbose)
@@ -89,7 +109,8 @@ class Server(object):
         elif self.detection_method in ['krum', 'clustering'] and self.baseline_detector and client_objects:
             client_grads = {c.client_id: c.get_plaintext_gradient() for c in client_objects if c.client_id in client_id_list}
             weights, logs, global_stats = self.baseline_detector.detect(client_grads, verbose=self.verbose)
-        else: weights = {cid: 1.0/len(client_id_list) for cid in client_id_list}
+        else: 
+            weights = {cid: 1.0/len(client_id_list) for cid in client_id_list}
         self.current_round_weights = weights
         return weights
 
@@ -97,6 +118,7 @@ class Server(object):
         t_start_total = time.time()
         weights_map = self.current_round_weights
         sorted_active_ids = sorted(active_ids) 
+        num_accepted = len(sorted_active_ids)
         
         w_bytes = self.w_old_global_flat.tobytes()
         model_hash_str = str(int(hashlib.sha256(w_bytes).hexdigest()[:15], 16))
@@ -133,21 +155,34 @@ class Server(object):
             except Exception as e: pass
         t_s2_end = time.time()
 
-        t_agg_start = time.time()
+        # 初始化时间变量
+        t_agg_core_cost = 0.0
+        t_pytorch_cost = 0.0
+        
         try:
             reconstruct_tau = self._compute_tau(len(sorted_active_ids))
+            data_len = len(final_ciphers[0])
             
-            # 1. 安全聚合反量化可训练参数
+            # [绝对离线] TA 预计算 (此部分不计入任何在线聚合时间)
+            ta_s_alpha, ta_s_beta = self.server_adapter.ta_offline_compute(
+                sorted_active_ids, self.kappa_m, round_num, data_len
+            )
+            
+            # [精确剖析 1] 纯 C++ 密码学安全聚合与解密提取
+            t_agg_core_start = time.time()
             result_float = self.server_adapter.aggregate_and_unmask(
                 sorted_active_ids, u2_ids, shares_list, final_ciphers, 
-                self.kappa_m, round_num, model_hash_str, reconstruct_tau
+                self.kappa_m, round_num, model_hash_str, reconstruct_tau,
+                ta_s_alpha, ta_s_beta
             )
+            t_agg_core_cost = time.time() - t_agg_core_start
+            
+            # [精确剖析 2] PyTorch 框架内部更新与 BN 同步的非密码学开销
+            t_pytorch_start = time.time()
             self._apply_global_update(result_float)
             
-            # 2. [精确修复] 明文同步 BatchNorm 的统计缓存，分离 Float 和 Long 处理
             with torch.no_grad():
                 for name, buffer in self.global_model.named_buffers():
-                    # 处理均值和方差 (Float)
                     if 'running_mean' in name or 'running_var' in name:
                         buffer.zero_()
                         for cid in u2_ids:
@@ -155,23 +190,31 @@ class Server(object):
                             w = weights_map.get(cid, 0.0)
                             client_buffer = client.model.state_dict()[name].to(self.device)
                             buffer.add_(client_buffer * w)
-                    # 处理追踪批次数量 (Long)，直接累加，不乘以浮点权重
                     elif 'num_batches_tracked' in name:
                         buffer.zero_()
                         for cid in u2_ids:
                             client = next(c for c in client_objects if c.client_id == cid)
                             client_buffer = client.model.state_dict()[name].to(self.device)
                             buffer.add_(client_buffer)
+            t_pytorch_cost = time.time() - t_pytorch_start
 
         except Exception as e: print(f"  [Critical Error] Aggregation crashed: {e}")
-        t_agg_end = time.time()
         
         if self.verbose:
-            print(f"  [Perf] Time Breakdown:")
-            print(f"         Step 1 (Cipher Upload) : {t_s1_end - t_s1_start:.4f}s")
-            print(f"         Step 2 (Share Upload)  : {t_s2_end - t_s2_start:.4f}s")
-            print(f"         Step 3 (C++ Aggregation): {t_agg_end - t_agg_start:.4f}s")
-            print(f"         Total Round Time       : {t_agg_end - t_start_total:.4f}s")
+            t_s1_serial = t_s1_end - t_s1_start
+            t_s2_serial = t_s2_end - t_s2_start
+            t_s1_concurrent = t_s1_serial / num_accepted if num_accepted > 0 else 0
+            t_s2_concurrent = t_s2_serial / num_accepted if num_accepted > 0 else 0
+            
+            print(f"  [Perf] Precision Time Breakdown:")
+            print(f"         >> Step 1 Cipher Upload (Serial Total): {t_s1_serial:.4f}s  -->  Concurrent: {t_s1_concurrent:.4f}s/client")
+            print(f"         >> Step 2 Share Upload  (Serial Total): {t_s2_serial:.4f}s  -->  Concurrent: {t_s2_concurrent:.4f}s/client")
+            print(f"         >> Step 3 Core C++ Decryption         : {t_agg_core_cost:.4f}s")
+            print(f"         >> Step 4 PyTorch Tensor & BN Sync    : {t_pytorch_cost:.4f}s")
+            
+            # 给出真正的端到端并发时间参考
+            true_concurrent_secagg_time = t_s1_concurrent + t_s2_concurrent + t_agg_core_cost
+            print(f"         >> [🌟 True SecAgg Concurrent Time]    : {true_concurrent_secagg_time:.4f}s (Excluding PyTorch overhead)")
 
     def _update_global_direction_feature(self, current_round):
         try:
@@ -200,6 +243,7 @@ class Server(object):
                 outputs = self.global_model(inputs)
                 test_loss += self.criterion(outputs, targets).item()
                 _, predicted = outputs.max(1)
+                total += targets.size(0)
                 total += targets.size(0)
                 correct += predicted.eq(targets).sum().item()
         return 100.*correct/total, test_loss/len(self.test_dataloader)

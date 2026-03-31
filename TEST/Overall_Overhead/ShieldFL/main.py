@@ -7,6 +7,7 @@ import numpy as np
 import random
 import math
 from phe import paillier
+from tqdm import tqdm
 
 from model.Lenet5 import LeNet5
 from model.Resnet18 import ResNet18_CIFAR10
@@ -20,77 +21,30 @@ def set_model_vector(model, vector):
     torch.nn.utils.vector_to_parameters(vector, model.parameters())
 
 # ==========================================
-# 通信量理论计算引擎 (ShieldFL)
-# ==========================================
-def calc_shieldfl_comm(d, num_clients, key_bits=512):
-    """
-    计算 ShieldFL 的精确通信量 (MB)
-    N 的位数为 key_bits，Paillier密文在 Z_{N^2}^* 中，占 2*key_bits 位
-    """
-    c_bytes = (2 * key_bits) // 8  # 128 Bytes (密文)
-    p_bytes = 4                    # 4 Bytes (Float32 明文)
-    
-    # 1. 客户端平均通信量 (上传密文 + 下载明文)
-    client_up = (d + 1) * c_bytes  # d 个梯度密文 + 1 个范数平方密文
-    client_down = d * p_bytes      # d 个全局模型明文
-    client_avg_mb = (client_up + client_down) / (1024 * 1024)
-    
-    # 2. 服务器端总通信量 (S1 <-> S2 交互 + S1 下发)
-    # [SecJudge]: 每客户端 S1 发送1个盲化求和密文，S2 返回1个明文
-    secjudge_comm = num_clients * (c_bytes + p_bytes)
-    # [SecCos]: 每客户端 S1 发送2个盲化密文(内积, 范数), S2 返回2个明文
-    seccos_comm = num_clients * (2 * c_bytes + 2 * p_bytes)
-    # [全局解密]: S1 发送 d 个聚合密文，S2 返回 d 个明文
-    dec_comm = d * c_bytes + d * p_bytes
-    # [广播下发]: S1 向所有客户端广播明文模型
-    broadcast_comm = num_clients * d * p_bytes
-    
-    server_total_mb = (secjudge_comm + seccos_comm + dec_comm + broadcast_comm) / (1024 * 1024)
-    return client_avg_mb, server_total_mb
-
-# ==========================================
-# 密码服务提供商 (CSP) / 模拟服务器 S2
+# 密码服务提供商 (CSP) 
 # ==========================================
 class CryptographicServiceProvider:
     def __init__(self, key_length=512):
+        # 按照论文 80-bit 安全级别，对应 N=1024 bits (这里为加快演示默认设为 512, 您可改为 1024)
         self.public_key, self.private_key = paillier.generate_paillier_keypair(n_length=key_length)
 
     def get_public_key(self):
         return self.public_key
 
-    def secure_judge_verify(self, enc_sum_blinded, r_sq_sum):
-        sum_blinded = self.private_key.decrypt(enc_sum_blinded)
-        return sum_blinded - r_sq_sum
-
-    def secure_verify_cosine_similarity(self, enc_dot_blinded, enc_norm_A_blinded, norm_B_blinded_pt):
-        X = self.private_key.decrypt(enc_dot_blinded)
-        Y = self.private_key.decrypt(enc_norm_A_blinded)
-        if Y <= 0 or norm_B_blinded_pt <= 0:
-            return False, -1.0
-        cos_sim = X / math.sqrt(Y * norm_B_blinded_pt)
-        return (cos_sim >= 0.0), cos_sim
-
-    def decrypt_global_model(self, enc_global_update, deg, num_benign):
-        plaintext_update = [(self.private_key.decrypt(enc_x) / (deg * num_benign)) for enc_x in enc_global_update]
-        return torch.tensor(plaintext_update, dtype=torch.float32)
-
 # ==========================================
-# 客户端类 (ShieldFL)
+# 客户端类 (ShieldFL Client)
 # ==========================================
 class ShieldFLClient:
-    def __init__(self, client_data, model_class, public_key, device='cpu', kappa=1e-3, deg=100000):
-        self.client_id = client_data['client_id']
-        self.is_malicious = client_data['is_malicious']
+    def __init__(self, client_data, model_class, public_key, device='cpu', deg=100000):
         self.train_loader = client_data['host_loader']
         self.device = device
         self.model = model_class().to(self.device)
         self.public_key = public_key
-        self.kappa = kappa
         self.deg = deg
-        self.time_logs = {}
+        self.time_logs = {'t_train': 0.0, 't_scale': 0.0, 't_enc': 0.0}
 
     def run_local_training_and_encrypt(self, global_weights, local_epochs):
-        # 1. 本地训练
+        # 1. 真实本地训练
         start_train = time.time()
         set_model_vector(self.model, global_weights)
         criterion = nn.CrossEntropyLoss()
@@ -106,148 +60,238 @@ class ShieldFLClient:
         local_update = get_model_vector(self.model) - global_weights
         self.time_logs['t_train'] = time.time() - start_train
         
-        # 2. 稀疏化与定点数放缩
+        # 2. 稀疏化与放缩
         start_scale = time.time()
-        mask = torch.abs(local_update) >= self.kappa
+        kappa = torch.quantile(torch.abs(local_update), 0.9).item() 
+        mask = torch.abs(local_update) >= kappa
         sparse_update = local_update * mask
-        norm = torch.norm(sparse_update, p=2)
-        normalized_update = sparse_update / norm if norm > 0 else sparse_update
-        scaled_update_np = np.round(normalized_update.cpu().numpy() * self.deg).astype(int)
+        norm = torch.norm(sparse_update, p=2) + 1e-12 
+        normalized_update = sparse_update / norm
+        scaled_update_np = np.round(normalized_update.cpu().numpy() * self.deg).astype(np.int64)
         self.time_logs['t_scale'] = time.time() - start_scale
         
-        # 3. Paillier 密文加密
+        # 3. 逐维度真实公钥加密 (完全遵循论文，不提前计算平方和)
         start_enc = time.time()
         enc_update = [self.public_key.encrypt(int(x)) for x in scaled_update_np]
-        norm_A_sq = int(np.sum(scaled_update_np.astype(np.int64) ** 2))
-        enc_norm_A_sq = self.public_key.encrypt(norm_A_sq)
         self.time_logs['t_enc'] = time.time() - start_enc
         
-        return enc_update, enc_norm_A_sq
+        return enc_update
 
 # ==========================================
-# 云服务器系统 (ShieldFL Server)
+# 云服务器系统 (ShieldFL Server - 真实操作版)
 # ==========================================
 class CloudServer:
-    def __init__(self, model_shape, csp, deg=100000, device='cpu'):
+    def __init__(self, model_shape, csp, deg=100000, device='cpu', key_length=512):
         self.global_weights = torch.zeros(model_shape).to(device)
         self.csp = csp
         self.public_key = csp.get_public_key()
         self.device = device
         self.d = model_shape[0]
         self.deg = deg
-        self.reference_gradient_int = np.ones(self.d, dtype=np.int64) * self.deg
+        
+        # 通信量统计参数
+        self.c_bytes = (2 * key_length) // 8  # 密文字节数
+        self.p_bytes = 8                      # 明文数值字节数 (int64)
+        self.server_comm_bytes = 0            # 记录服务器交互通信量
+        
+        # 初始的聚合梯度为全 0 的密文
+        self.enc_global_gradient = [self.public_key.encrypt(0) for _ in range(self.d)]
 
-    def init_global_weights(self, model):
-        self.global_weights = get_model_vector(model).clone()
+    def sec_judge(self, enc_g_i):
+        """严格复现论文 Figure 5: SecJudge 交互协议"""
+        m = len(enc_g_i)
+        r_list = [random.randint(1, 5) for _ in range(m)]
 
-    def secure_cosine_similarity_aggregation(self, client_packages):
-        benign_enc_updates, statuses = [], []
+        # [S1 执行]: 盲化
+        blinded_enc = [enc_x + r for enc_x, r in zip(enc_g_i, r_list)]
+        self.server_comm_bytes += m * self.c_bytes  # S1 将 m 个密文发给 S2
+
+        # [S2 执行]: 解密并求平方和，然后加密
+        dec_x = [self.csp.private_key.decrypt(x) for x in blinded_enc]
+        sum_sq = sum([x**2 for x in dec_x])
+        enc_sum_sq = self.public_key.encrypt(sum_sq)
+        self.server_comm_bytes += self.c_bytes  # S2 将 1 个密文发给 S1
+
+        # [S1 执行]: 密文去盲化
+        # 论文公式: sum = enc_sum_sq - sum(2*r_k*x_k + r_k^2)
+        unblind_term = sum([(enc_x * (2 * r)) + (r ** 2) for r, enc_x in zip(r_list, enc_g_i)])
+        enc_final_sum = enc_sum_sq - unblind_term
+        self.server_comm_bytes += self.c_bytes  # S1 将 1 个去盲化后的密文发给 S2
+
+        # [S2 执行]: 最终解密
+        final_sum = self.csp.private_key.decrypt(enc_final_sum)
+        self.server_comm_bytes += self.p_bytes  # S2 将 1 个明文判定结果发回给 S1
+
+        return final_sum
+
+    def sec_cos(self, enc_a, enc_b):
+        """严格复现论文 Figure 6: SecCos 交互协议 (处理两个加密向量)"""
+        m = len(enc_a)
+        r_list = [random.randint(1, 3) for _ in range(m)]
+
+        # [S1 执行]: 双重盲化
+        blinded_a = [a + r for a, r in zip(enc_a, r_list)]
+        blinded_b = [b + r for b, r in zip(enc_b, r_list)]
+        self.server_comm_bytes += 2 * m * self.c_bytes  # S1 将 2m 个密文发给 S2
+
+        # [S2 执行]: 解密并计算内积，然后加密
+        dec_a = [self.csp.private_key.decrypt(a) for a in blinded_a]
+        dec_b = [self.csp.private_key.decrypt(b) for b in blinded_b]
+        dot_product = sum([a * b for a, b in zip(dec_a, dec_b)])
+        enc_dot = self.public_key.encrypt(dot_product)
+        self.server_comm_bytes += self.c_bytes  # S2 将 1 个密文发给 S1
+
+        # [S1 执行]: 密文去盲化
+        # 论文展开式: (a+r)(b+r) = ab + ar + br + r^2 => 剔除 ar + br + r^2
+        unblind_term = sum([(a * r) + (b * r) + (r ** 2) for r, a, b in zip(r_list, enc_a, enc_b)])
+        enc_final_dot = enc_dot - unblind_term
+        self.server_comm_bytes += self.c_bytes  # S1 将 1 个密文发给 S2
+
+        # [S2 执行]: 最终解密出 Cosine Similarity
+        final_dot = self.csp.private_key.decrypt(enc_final_dot)
+        self.server_comm_bytes += self.p_bytes  # S2 发回明文
+
+        return final_dot
+
+    def process_round(self, client_packages):
+        """完整执行服务端一轮的判定、余弦相似度计算与拜占庭聚合"""
         time_logs = {'t_secjudge': 0.0, 't_seccos': 0.0, 't_agg': 0.0, 't_dec': 0.0}
-        norm_B_sq = int(np.sum(self.reference_gradient_int ** 2))
+        num_clients = len(client_packages)
         
-        for i, (enc_A, enc_norm_A_sq) in enumerate(client_packages):
-            # [SecJudge] 阶段
-            t0 = time.time()
-            r_sq_sum = random.randint(1, 1000)
-            enc_sum_blinded = enc_norm_A_sq + r_sq_sum 
-            real_sum = self.csp.secure_judge_verify(enc_sum_blinded, r_sq_sum)
-            time_logs['t_secjudge'] += (time.time() - t0)
-            
-            target_sum = self.deg ** 2
-            if abs(real_sum - target_sum) > (target_sum * 0.05):
-                statuses.append(f"Rejected by SecJudge")
-                continue
+        # 1. 真实执行所有客户端的 SecJudge
+        print("    [Server] 正在执行全量 SecJudge...")
+        t0 = time.time()
+        valid_clients = []
+        for i in tqdm(range(num_clients), desc="SecJudge"):
+            real_sum = self.sec_judge(client_packages[i])
+            # 允许合理的定点数量化误差容限
+            if abs(real_sum - self.deg**2) <= (self.deg**2 * 0.1):
+                valid_clients.append(client_packages[i])
+        time_logs['t_secjudge'] = time.time() - t0
 
-            # [SecCos] 阶段
-            t0 = time.time()
-            enc_dot_product = self.public_key.encrypt(0)
-            for enc_a_i, b_i in zip(enc_A, self.reference_gradient_int):
-                enc_dot_product += (enc_a_i * int(b_i))
-                
-            r = random.randint(1, 5)
-            r_sq = r ** 2
-            is_benign, cos_sim = self.csp.secure_verify_cosine_similarity(
-                enc_dot_product * r_sq, enc_norm_A_sq * r_sq, norm_B_sq * r_sq 
-            )
-            time_logs['t_seccos'] += (time.time() - t0)
+        if not valid_clients:
+            print("    [Server] 警告：所有客户端梯度被过滤！")
+            valid_clients = client_packages # 兜底保护
             
-            if is_benign:
-                benign_enc_updates.append(enc_A)
-                statuses.append(f"Benign (Cos: {cos_sim:.4f})")
-            else:
-                statuses.append(f"Poisoned (Cos: {cos_sim:.4f})")
-                
-        # [密文聚合] 阶段
+        num_valid = len(valid_clients)
+
+        # 2. 真实执行与历史聚合梯度的 SecCos
+        print("    [Server] 正在执行与全局梯度的 SecCos...")
         t0 = time.time()
-        num_benign = len(benign_enc_updates)
-        if num_benign > 0:
-            enc_global_update = benign_enc_updates[0]
-            for j in range(1, num_benign):
-                for k in range(self.d):
-                    enc_global_update[k] += benign_enc_updates[j][k]
-        else:
-            enc_global_update = [self.public_key.encrypt(0) for _ in range(self.d)]
-            num_benign = 1
-        time_logs['t_agg'] += (time.time() - t0)
+        cos_values = []
+        for i in tqdm(range(num_valid), desc="SecCos (vs Global)"):
+            cos_val = self.sec_cos(valid_clients[i], self.enc_global_gradient)
+            cos_values.append(cos_val)
+            
+        # 寻找恶意基线 g* (最低 cosine)
+        min_idx = np.argmin(cos_values)
+        enc_g_star = valid_clients[min_idx]
+
+        # 3. 真实执行与恶意基线 g* 的 SecCos 以确定 Confidence
+        print("    [Server] 正在执行与恶意基线的 SecCos 计算 Confidence...")
+        confidences = []
+        for i in tqdm(range(num_valid), desc="SecCos (vs g*)"):
+            cos_star = self.sec_cos(valid_clients[i], enc_g_star)
+            confidences.append(self.deg - cos_star) # 论文置信度公式
+        time_logs['t_seccos'] = time.time() - t0
+
+        # 4. 真实执行密文聚合 (加权)
+        print("    [Server] 正在执行全局密文加权聚合...")
+        t0 = time.time()
+        total_conf = sum(confidences) + 1e-9
+        norm_conf = [int((c / total_conf) * self.deg) for c in confidences]
         
-        # [全局解密] 阶段
+        enc_global_update = [self.public_key.encrypt(0) for _ in range(self.d)]
+        for j in range(num_valid):
+            weight = norm_conf[j]
+            for k in range(self.d):
+                # 密文标量乘法与加法
+                enc_global_update[k] += valid_clients[j][k] * weight
+        time_logs['t_agg'] = time.time() - t0
+
+        # 5. 真实执行全局解密
+        print("    [Server] 正在执行全局模型解密与更新...")
         t0 = time.time()
-        plaintext_tensor = self.csp.decrypt_global_model(enc_global_update, self.deg, num_benign)
+        plaintext_update = [(self.csp.private_key.decrypt(enc_x) / (self.deg**2)) for enc_x in enc_global_update]
+        self.enc_global_gradient = enc_global_update # 记录为下一轮基准
+        time_logs['t_dec'] = time.time() - t0
+        
+        plaintext_tensor = torch.tensor(plaintext_update, dtype=torch.float32)
         self.global_weights += plaintext_tensor.to(self.device)
-        normalized_ref = plaintext_tensor / torch.norm(plaintext_tensor)
-        self.reference_gradient_int = np.round(normalized_ref.cpu().numpy() * self.deg).astype(np.int64)
-        time_logs['t_dec'] += (time.time() - t0)
         
-        return self.global_weights, statuses, time_logs
+        return self.global_weights, time_logs
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', type=str, default='LeNet5', choices=['LeNet5', 'ResNet18'])
-    parser.add_argument('--num_clients', type=int, default=3)
+    parser.add_argument('--model', type=str, default='ResNet20', choices=['LeNet5', 'ResNet18', 'ResNet20'])
+    parser.add_argument('--num_clients', type=int, default=10)
+    parser.add_argument('--test_dim', type=int, default=0, help='为了真实跑通代码设置的测试维度，设为 0 则为全维度（将极其耗时）')
     args = parser.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    csp = CryptographicServiceProvider(key_length=512)
-    model_class = LeNet5 if args.model == 'LeNet5' else ResNet18_CIFAR10
-    dataset_name = 'MNIST' if args.model == 'LeNet5' else 'CIFAR10'
+    print(f"[*] 启动 ShieldFL [绝对真实执行版] | Device: {device} | Clients: {args.num_clients}")
+    
+    key_length = 512
+    csp = CryptographicServiceProvider(key_length=key_length)
+    model_class = resnet20 if args.model == 'ResNet20' else (LeNet5 if args.model == 'LeNet5' else ResNet18_CIFAR10)
+    dataset_name = 'CIFAR10' if args.model != 'LeNet5' else 'MNIST'
 
-    client_dataloaders, _ = get_federated_dataloaders(dataset_name, args.num_clients, 0.33, 64)
-    clients = [ShieldFLClient(data, model_class, csp.get_public_key(), device) for data in client_dataloaders]
+    client_dataloaders, _ = get_federated_dataloaders(dataset_name, num_clients=args.num_clients, poison_rate=0.0, batch_size=64)
     dummy_model = model_class().to(device)
     
-    d = get_model_vector(dummy_model).size(0)
-    server = CloudServer((d,), csp, device=device)
-    server.init_global_weights(dummy_model)
+    # 维度处理
+    full_d = get_model_vector(dummy_model).size(0)
+    d = args.test_dim if args.test_dim > 0 else full_d
+    if args.test_dim > 0:
+        print(f"[!] 警告: 为避免您等待数小时，当前已截断测试维度至 {d}。如需测试全维度 {full_d} 耗时，请添加参数 --test_dim 0")
+    
+    server = CloudServer((d,), csp, device=device, key_length=key_length)
+    
+    # 初始化全局权重 (这里仅截断部分用于实验跑通)
+    global_weights_full = get_model_vector(dummy_model).clone()
+    server.global_weights = global_weights_full[:d]
 
-    # 打印通信量分析
-    c_avg_mb, s_total_mb = calc_shieldfl_comm(d, args.num_clients)
-    print(f"\n[*] ShieldFL 通信量分析 (模型维度 {d}):")
-    print(f"    - 客户端平均通信量 (上+下): {c_avg_mb:.2f} MB")
-    print(f"    - 服务器端总通信量 (交互+下发): {s_total_mb:.2f} MB")
-
-    print(f"\n>>> 开始 ShieldFL 单轮完整流程测试...")
+    # --- 通信量严格核算 (依据您的需求) ---
+    c_bytes = (2 * key_length) // 8
+    client_upload_mb = (d * c_bytes) / (1024*1024)
+    client_download_mb = (d * c_bytes) / (1024*1024)  # 下载初始/更新的加密模型
+    
+    print(f"\n>>> 阶段 1: 客户端本地训练与真实同态加密...")
     client_packages = []
     c_train_time, c_scale_time, c_enc_time = 0, 0, 0
-    
-    for client in clients:
-        enc_A, enc_norm_A = client.run_local_training_and_encrypt(server.global_weights, 1)
-        client_packages.append((enc_A, enc_norm_A))
+    for i in range(args.num_clients):
+        client = ShieldFLClient(client_dataloaders[i], model_class, csp.get_public_key(), device)
+        # 仅取前 d 维投入实验
+        enc_A = client.run_local_training_and_encrypt(global_weights_full, 1)[:d]
+        client_packages.append(enc_A)
         c_train_time += client.time_logs['t_train']
         c_scale_time += client.time_logs['t_scale']
         c_enc_time += client.time_logs['t_enc']
         
-    _, statuses, s_time_logs = server.secure_cosine_similarity_aggregation(client_packages)
+    print(f">>> 阶段 2: 服务端执行全链路防御与安全聚合操作 (含 tqdm 进度指示)...")
+    _, s_time_logs = server.process_round(client_packages)
     
-    print("\n  [客户端时间耗时 (平均)]")
-    print(f"  - 本地模型训练 : {c_train_time/args.num_clients:.4f} s")
-    print(f"  - 稀疏化与定点化 : {c_scale_time/args.num_clients:.4f} s")
-    print(f"  - 全维 HE 加密 : {c_enc_time/args.num_clients:.4f} s")
+    server_comm_mb = server.server_comm_bytes / (1024*1024)
     
-    print("\n  [服务器端时间耗时 (总计)]")
-    print(f"  - SecJudge 验证 : {s_time_logs['t_secjudge']:.4f} s")
-    print(f"  - SecCos 相似度计算 : {s_time_logs['t_seccos']:.4f} s")
-    print(f"  - 密文同态聚合 : {s_time_logs['t_agg']:.4f} s")
-    print(f"  - 全局模型解密还原 : {s_time_logs['t_dec']:.4f} s")
+    print("\n" + "="*55)
+    print(f"    ShieldFL 全量真实操作测评报告 (Dim={d}, N={args.num_clients})")
+    print("="*55)
+    print(f" [精确通信量剖析]")
+    print(f"  - 单客户端上传密文参数     : {client_upload_mb:.4f} MB")
+    print(f"  - 单客户端收到(初始)模型   : {client_download_mb:.4f} MB")
+    print(f"  - S1 与 S2 的真实交互通信量: {server_comm_mb:.4f} MB")
+    print("-" * 55)
+    print(f" [客户端单点耗时 (串行均值)]")
+    print(f"  - 本地模型训练   : {c_train_time/args.num_clients:.4f} s")
+    print(f"  - 动态稀疏定点化 : {c_scale_time/args.num_clients:.4f} s")
+    print(f"  - 全维同态加密   : {c_enc_time/args.num_clients:.4f} s")
+    print("-" * 55)
+    print(f" [服务端全量真实计算耗时]")
+    print(f"  - SecJudge 验证 (所有客户端)   : {s_time_logs['t_secjudge']:.4f} s")
+    print(f"  - SecCos 相似度 (含两次遍历计算) : {s_time_logs['t_seccos']:.4f} s")
+    print(f"  - 密文加法与标量乘法聚合       : {s_time_logs['t_agg']:.4f} s")
+    print(f"  - 全局模型解密还原             : {s_time_logs['t_dec']:.4f} s")
+    print("="*55 + "\n")
 
 if __name__ == "__main__":
     main()

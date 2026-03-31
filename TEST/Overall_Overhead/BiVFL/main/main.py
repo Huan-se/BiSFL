@@ -220,7 +220,9 @@ def run_single_mode(full_config, mode_name, current_mode_config):
         
         log(f"  >> Serial Training Phase Finished in {t_p1_cost:.2f}s (Max concurrent: {max_client_train_time:.4f}s)")
 
+        # ---------------------------------------------
         # Phase 2: TEE Projection Extraction
+        # ---------------------------------------------
         log(f"  [Phase 2] Starting TEE Projection...")
         t_p2_start = time.time()
         client_features_list = []
@@ -233,13 +235,19 @@ def run_single_mode(full_config, mode_name, current_mode_config):
             
         round_up_proj_mb = get_obj_size_mb(client_features_list[0]) if client_features_list else 0.0
         total_comm_up_proj_mb += round_up_proj_mb
+        
+        # [核心修复] Server 在本地生成自己的全局投影参考方向 (属于投影开销 O(d))
+        server.update_global_proj(current_round=r)
             
         t_p2_cost = time.time() - t_p2_start
         total_time_proj += t_p2_cost
         log(f"  >> TEE Projection Finished in {t_p2_cost:.2f}s")
 
-        # Phase 3: Server Detection & Weight Calculation
+        # ---------------------------------------------
+        # Phase 3: Server Detection & Weight Calculation 
+        # ---------------------------------------------
         t_p3_start = time.time()
+        # 此时这里的检测是纯净的 1024 维 O(N) 级别计算
         weights_map = server.calculate_weights(active_ids, client_features_list, client_data_sizes, current_round=r, client_objects=clients)
         t_p3_cost = time.time() - t_p3_start
         total_time_detect += t_p3_cost

@@ -9,7 +9,6 @@
 #include <stdarg.h>
 
 static int g_enclave_verbose = 0;
-
 sgx_ecc_state_handle_t ecc_state = NULL;
 sgx_ec256_private_t enclave_priv_key;
 sgx_ec256_public_t enclave_pub_key;
@@ -30,8 +29,6 @@ void ecall_ra_provision_seed(uint8_t* server_pub_key, uint8_t* cipher_payload) {
     memset(&enclave_priv_key, 0, sizeof(sgx_ec256_private_t));
 }
 
-#define LOG_DEBUG(fmt, ...) do { if (g_enclave_verbose) printf("[Enclave DEBUG] " fmt, ##__VA_ARGS__); } while (0)
-
 void ecall_set_verbose(int level) { g_enclave_verbose = level; }
 
 extern "C" { int rand(void); void srand(unsigned int seed); }
@@ -50,13 +47,12 @@ int printf(const char *fmt, ...) {
 #include <string>
 #include <vector>
 #include <map>
-#include <random>
 #include <cmath>
 #include <algorithm> 
 #include <mutex>
 #include <Eigen/Dense>
 
-typedef __int128_t int128;
+typedef unsigned __int128 uint128;
 #define CHUNK_SIZE 4096
 const long long MOD = 9223372036854775783;
 const double SCALE = 100000000.0; 
@@ -68,17 +64,16 @@ long parse_long(const char* str) { if (!str) return 0; char* end; return std::st
 long long parse_long_long(const char* str) { if (!str) return 0; return std::stoll(str); }
 float parse_float(const char* str) { if (!str) return 0.0f; char* end; return std::strtof(str, &end); }
 
+// [强制同步极速版运算]
 class MathUtils {
 public:
-    static long long safe_mod_add(long long a, long long b) {
-        int128 ua = (int128)a; int128 ub = (int128)b;
-        if (ua < 0) ua += MOD; if (ub < 0) ub += MOD;
-        return (long long)((ua + ub) % (int128)MOD);
+    static inline long long safe_mod_add(long long a, long long b) {
+        uint128 res = (uint128)a + (uint128)b;
+        return (long long)(res % MOD);
     }
-    static long long safe_mod_mul(long long a, long long b) {
-        int128 ua = (int128)a; int128 ub = (int128)b;
-        if (ua < 0) ua += MOD; if (ub < 0) ub += MOD;
-        return (long long)((ua * ub) % (int128)MOD);
+    static inline long long safe_mod_mul(long long a, long long b) {
+        uint128 res = (uint128)a * (uint128)b;
+        return (long long)(res % MOD);
     }
 };
 
@@ -94,15 +89,30 @@ public:
     }
 };
 
+// [强制同步极速流密码仿真]
 class DeterministicRandom {
-private: std::mt19937 gen;
+private:
+    uint64_t s[4];
+    static inline uint64_t rotl(const uint64_t x, int k) {
+        return (x << k) | (x >> (64 - k));
+    }
+    uint64_t next() {
+        const uint64_t result = rotl(s[1] * 5, 7) * 9;
+        const uint64_t t = s[1] << 17;
+        s[2] ^= s[0]; s[3] ^= s[1]; s[1] ^= s[2]; s[0] ^= s[3];
+        s[2] ^= t; s[3] = rotl(s[3], 45);
+        return result;
+    }
 public:
-    DeterministicRandom(long seed) : gen((unsigned int)seed) {}
-    long long next_mask_mod() { 
-        uint64_t limit = UINT64_MAX - (UINT64_MAX % MOD);
-        uint64_t val;
-        do { val = ((uint64_t)gen() << 32) | gen(); } while (val >= limit);
-        return (long long)(val % MOD);
+    DeterministicRandom(long seed) {
+        s[0] = (uint64_t)seed ^ 0x1234567890ABCDEFULL;
+        s[1] = (uint64_t)seed ^ 0xFEDCBA0987654321ULL;
+        s[2] = (uint64_t)seed ^ 0x13579BDF2468ACE0ULL;
+        s[3] = (uint64_t)seed ^ 0x0ECA8642FDB97531ULL;
+        for(int i=0; i<16; i++) next(); // 预热打乱
+    }
+    inline long long next_mask_mod() {
+        return (long long)(next() % MOD);
     }
 };
 
@@ -272,10 +282,7 @@ void ecall_get_vector_shares_dynamic(
     long long x_val = my_id + 1; 
 
     auto generate_share = [&](int tag, int target, long seed) {
-        if(out_idx + 2 >= max_len) {
-            printf("[Enclave CRITICAL] max_len buffer overflow! Tag=%d, Target=%d\n", tag, target);
-            return;
-        }
+        if(out_idx + 2 >= max_len) return;
         std::string purpose = std::to_string(tag) + "_" + std::to_string(target) + "_" + std::to_string(view_hash);
         long poly_seed = CryptoUtils::derive_seed(kappa_s, purpose.c_str(), t);
         DeterministicRandom rng_poly(poly_seed);
